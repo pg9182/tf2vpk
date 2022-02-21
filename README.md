@@ -10,6 +10,7 @@ tf2-vpkoptim /path/to/Titanfall2/vpk \
     --verbose \
     --merge \
     --exclude '/depot' \
+    --exclude '*.bsp_lump' \
     --output /path/to/new/vpks
 ```
 
@@ -21,6 +22,6 @@ tf2-vpkoptim /path/to/Titanfall2/vpk \
     --merge \
     --exclude '*.vtf' \
     --exclude '/depot' \
-    --exclude-bsp-lump '4,5,6,7,55,122,125' \
+    --exclude '*.bsp_lump' \
     --output /path/to/new/vpks
 ```
