@@ -8,6 +8,8 @@ import (
 	"io"
 	"sort"
 	"strings"
+
+	"github.com/pg9182/tf2lzham"
 )
 
 // Titanfall 2 VPK constants.
@@ -444,11 +446,47 @@ func (c ValvePakChunk) IsCompressed() bool {
 
 // CreateReader creates a new reader for the chunk.
 func (c ValvePakChunk) CreateReader(r io.ReaderAt) (io.Reader, error) {
-	if x := io.NewSectionReader(r, int64(c.Offset), int64(c.CompressedSize)); c.IsCompressed() {
-		return nil, fmt.Errorf("lzham not implemented")
+	if c.IsCompressed() {
+		return newLZHAMLazyReader(r, int64(c.Offset), int64(c.CompressedSize), int64(c.UncompressedSize)), nil
 	} else {
-		return x, nil
+		return io.NewSectionReader(r, int64(c.Offset), int64(c.CompressedSize)), nil
 	}
+}
+
+type lzhamLazyReader struct {
+	r   io.ReaderAt
+	off int64
+	csz int64
+	dsz int64
+
+	b []byte
+	n uint64
+}
+
+func newLZHAMLazyReader(r io.ReaderAt, off, csz, dsz int64) io.Reader {
+	return &lzhamLazyReader{r, off, csz, dsz, nil, 0}
+}
+
+func (r *lzhamLazyReader) Read(b []byte) (n int, err error) {
+	if r.b == nil {
+		src := make([]byte, int(r.csz))
+		if _, err := r.r.ReadAt(src, r.off); err != nil {
+			return 0, fmt.Errorf("read chunk: %w", err)
+		}
+		dst := make([]byte, int(r.dsz))
+		if n, _, _, err := tf2lzham.Decompress(dst, src); err != nil {
+			return 0, fmt.Errorf("decompress chunk: %w", err)
+		} else if n != len(dst) {
+			return 0, fmt.Errorf("decompress chunk: result is %d bytes, but expected %d", n, r.dsz)
+		}
+		r.b = dst
+	}
+	if r.n >= uint64(len(r.b)) {
+		return 0, io.EOF
+	}
+	n = copy(b, r.b[r.n:])
+	r.n += uint64(n)
+	return
 }
 
 // CreateReader creates a new reader for the raw data of the chunk.
