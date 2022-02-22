@@ -8,12 +8,12 @@ import (
 	"io"
 	"os"
 	"os/signal"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/pg9182/tf2vpk"
+	"github.com/pg9182/tf2vpk/cmd/internal"
 	"github.com/spf13/pflag"
 )
 
@@ -171,7 +171,7 @@ func optimize(ctx context.Context, inputDir, outputDir, vpkName string) error {
 	for _, f := range r.Root.File {
 		var excluded bool
 		for _, x := range *Exclude {
-			if m, err := matchGlobParents(x, f.Path); err != nil {
+			if m, err := internal.MatchGlobParents(x, f.Path); err != nil {
 				return fmt.Errorf("process excludes: match %q against glob %q: %w", f.Path, x, err)
 			} else if m {
 				vlog(VDebug, "--- exclude %q: matched %q", x, f.Path)
@@ -179,7 +179,7 @@ func optimize(ctx context.Context, inputDir, outputDir, vpkName string) error {
 			}
 		}
 		for _, x := range *ExcludeBSPLump {
-			if m, err := matchGlobParents(fmt.Sprintf("%04x.bsp_lump", x), f.Path); err != nil {
+			if m, err := internal.MatchGlobParents(fmt.Sprintf("%04x.bsp_lump", x), f.Path); err != nil {
 				return fmt.Errorf("process bsp lump excludes: match %q against glob %q: %w", f.Path, x, err)
 			} else if m {
 				vlog(VDebug, "--- exclude lump %d: matched %q", x, f.Path)
@@ -187,7 +187,7 @@ func optimize(ctx context.Context, inputDir, outputDir, vpkName string) error {
 			}
 		}
 		for _, x := range *Include {
-			if m, err := matchGlobParents(x, f.Path); err != nil {
+			if m, err := internal.MatchGlobParents(x, f.Path); err != nil {
 				return fmt.Errorf("process includes: match %q against glob %q: %w", f.Path, x, err)
 			} else if m {
 				excluded = false
@@ -301,7 +301,7 @@ func optimize(ctx context.Context, inputDir, outputDir, vpkName string) error {
 		}
 		r.Root.File[i].Index = targetIndex
 	}
-	vlog(VStatus, "--- wrote %d chunks (%s; delta %s)", cc, formatBytesSI(ccb), formatBytesSI(ccb-int64(origBlockBytesTotal)))
+	vlog(VStatus, "--- wrote %d chunks (%s; delta %s)", cc, internal.FormatBytesSI(ccb), internal.FormatBytesSI(ccb-int64(origBlockBytesTotal)))
 
 	if *DryRun {
 		if err := r.Root.Serialize(io.Discard); err != nil {
@@ -402,50 +402,4 @@ func vpkHashChunks(ctx context.Context, r *tf2vpk.Reader, fn func(ctx context.Co
 		}
 	}
 	return nil
-}
-
-func matchGlobParents(pattern string, name string) (matched bool, err error) {
-	var anchor bool
-	if strings.HasPrefix(pattern, "/") {
-		pattern, anchor = pattern[1:], true
-	}
-	for name != "" {
-		// test against the full path
-		if m, err := path.Match(pattern, name); m || err != nil {
-			return m, err
-		}
-		// split it
-		parent, base := path.Split(name)
-		if !anchor {
-			// test against the filename
-			if m, err := path.Match(pattern, base); m || err != nil {
-				return m, err
-			}
-		}
-		// continue with the parent
-		name = strings.TrimRight(parent, "/")
-	}
-	return false, nil
-}
-
-func formatBytesSI(b int64) string {
-	var neg bool
-	if b < 0 {
-		neg = true
-		b *= -1
-	}
-	const unit = 1000
-	if b < unit {
-		return fmt.Sprintf("%d B", b)
-	}
-	div, exp := int64(unit), 0
-	for n := b / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	if neg {
-		return fmt.Sprintf("-%.1f %cB", float64(b)/float64(div), "kMGTPE"[exp])
-	} else {
-		return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "kMGTPE"[exp])
-	}
 }
