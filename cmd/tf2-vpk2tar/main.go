@@ -29,19 +29,37 @@ func main() {
 	pflag.Parse()
 
 	argv := pflag.Args()
-	if len(argv) != 2 || *Help {
-		fmt.Fprintf(os.Stderr, "usage: %s [options] vpk_dir vpk_name\n\noptions:\n%s", os.Args[0], pflag.CommandLine.FlagUsages())
+	if len(argv) == 0 || len(argv) > 2 || *Help {
+		fmt.Fprintf(os.Stderr, "usage: %s [options] (vpk_dir vpk_name)|vpk_path\n\noptions:\n%s", os.Args[0], pflag.CommandLine.FlagUsages())
 		if !*Help {
 			os.Exit(2)
 		}
 		return
 	}
 
-	r, err := tf2vpk.OpenReader(argv[0], *VPKPrefix, argv[1])
+	var r *tf2vpk.Reader
+	var err error
+
+	if len(argv) == 2 {
+		vpkDir, vpkName := argv[0], argv[1]
+
+		r, err = tf2vpk.OpenReader(vpkDir, *VPKPrefix, vpkName)
+		if err != nil {
+			err = fmt.Errorf("open vpk %q (prefix %q) from %q: %w", vpkName, *VPKPrefix, vpkDir, err)
+		}
+	} else {
+		vpkPath := argv[0]
+
+		r, err = tf2vpk.OpenReaderPath(vpkPath, *VPKPrefix)
+		if err != nil {
+			err = fmt.Errorf("open vpk %q (prefix %q): %w", vpkPath, *VPKPrefix, err)
+		}
+	}
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: open vpk %q (prefix %q) from %q: %v\n", argv[1], *VPKPrefix, argv[0], err)
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
+	defer r.Close()
 
 	var w io.Writer
 	if !*Test {

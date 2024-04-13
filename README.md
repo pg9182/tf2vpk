@@ -9,20 +9,34 @@ Libraries and tools for working with Titanfall 2 VPKs.
 tf2-vpk2tar /path/to/Titanfall2/vpk client_mp_angel_city.bsp.pak000 --test --verbose
 ```
 
+```
+tf2-vpk2tar /path/to/Titanfall2/vpk/client_mp_angel_city.bsp.pak000_000.vpk --test --verbose
+```
+
+```
+tf2-vpk2tar /path/to/Titanfall2/vpk/englishclient_mp_angel_city.bsp.pak000_dir.vpk --test --verbose
+```
+
 #### Extract a single VPK to the current directory:
 
 ```
 tf2-vpk2tar /path/to/Titanfall2/vpk client_mp_angel_city.bsp.pak000 | tar xvf -
 ```
 
+```
+tf2-vpk2tar /path/to/Titanfall2/vpk/client_mp_angel_city.bsp.pak000_000.vpk | tar xvf -
+```
+
+```
+tf2-vpk2tar /path/to/Titanfall2/vpk/englishclient_mp_angel_city.bsp.pak000_dir.vpk | tar xvf -
+```
+
 #### Extract models from all VPKs:
 
 ```
-for x in /path/to/Titanfall2/vpk/*_000.vpk
+for vpk in /path/to/Titanfall2/vpk/english*_dir.vpk
 do
-    x=${x##*/}
-    x=${x%_000.vpk}
-    tf2-vpk2tar /path/to/Titanfall2/vpk "$x"  --exclude '/*' --include '/models' | tar xvf -
+    tf2-vpk2tar "$vpk"  --exclude '/*' --include '/models' | tar xvf -
 done
 ```
 
