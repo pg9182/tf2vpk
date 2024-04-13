@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strings"
 
 	"github.com/pg9182/tf2vpk"
 	"github.com/pg9182/tf2vpk/internal"
@@ -98,14 +97,15 @@ func main() {
 			fmt.Fprintf(os.Stderr, "error: find vpks: %v\n", err)
 		}
 		for _, e := range es {
-			if !strings.HasPrefix(e.Name(), *VPKPrefix) {
+			name, idx, err := tf2vpk.SplitName(e.Name(), *VPKPrefix)
+			if err != nil {
 				continue
 			}
-			if !strings.HasSuffix(e.Name(), tf2vpk.ValvePakDirSuffix) {
+			if idx != tf2vpk.ValvePakIndexDir {
 				continue
 			}
 			vlog(VVerbose, "found %s", filepath.Join(inputDir, e.Name()))
-			vpkName = append(vpkName, strings.TrimSuffix(strings.TrimPrefix(e.Name(), *VPKPrefix), tf2vpk.ValvePakDirSuffix))
+			vpkName = append(vpkName, name)
 		}
 	} else {
 		vpkName = argv[1:]
@@ -133,7 +133,9 @@ func main() {
 func optimize(ctx context.Context, inputDir, outputDir, vpkName string) error {
 	vlog(VStatus, "optimizing %s", filepath.Base(vpkName))
 
-	r, err := tf2vpk.OpenReader(inputDir, *VPKPrefix, vpkName)
+	vpk := tf2vpk.VPK(inputDir, *VPKPrefix, vpkName)
+
+	r, err := tf2vpk.NewReader(vpk)
 	if err != nil {
 		return err
 	}
@@ -365,16 +367,16 @@ func optimize(ctx context.Context, inputDir, outputDir, vpkName string) error {
 		default:
 		}
 
-		if err := os.Rename(df.Name(), filepath.Join(outputDir, tf2vpk.ValvePakBlockName(*VPKPrefix, vpkName, tf2vpk.ValvePakIndexDir))); err != nil {
+		if err := os.Rename(df.Name(), filepath.Join(outputDir, tf2vpk.JoinName(*VPKPrefix, vpkName, tf2vpk.ValvePakIndexDir))); err != nil {
 			return fmt.Errorf("rename final vpk dir: %w", err)
 		}
-		vlog(VDebug, "saved vpk dir %s", tf2vpk.ValvePakBlockName(*VPKPrefix, vpkName, tf2vpk.ValvePakIndexDir))
+		vlog(VDebug, "saved vpk dir %s", tf2vpk.JoinName(*VPKPrefix, vpkName, tf2vpk.ValvePakIndexDir))
 
 		for n, x := range bf {
-			if err := os.Rename(x.(*os.File).Name(), filepath.Join(outputDir, tf2vpk.ValvePakBlockName(*VPKPrefix, vpkName, n))); err != nil {
+			if err := os.Rename(x.(*os.File).Name(), filepath.Join(outputDir, tf2vpk.JoinName(*VPKPrefix, vpkName, n))); err != nil {
 				return fmt.Errorf("rename final vpk block: %w", err)
 			}
-			vlog(VDebug, "saved vpk block %s", tf2vpk.ValvePakBlockName(*VPKPrefix, vpkName, n))
+			vlog(VDebug, "saved vpk block %s", tf2vpk.JoinName(*VPKPrefix, vpkName, n))
 		}
 	}
 

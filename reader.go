@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"os"
 	"path"
-	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -16,55 +14,21 @@ import (
 // Reader reads Titanfall 2 VPKs.
 type Reader struct {
 	Root  ValvePakDir
-	data  map[ValvePakIndex]io.ReaderAt
+	block map[ValvePakIndex]io.ReaderAt
 	close map[ValvePakIndex]io.Closer
 }
 
-// OpenReaderPath is like OpenReader, but takes the full path to a VPK.
-func OpenReaderPath(path, prefix string) (*Reader, error) {
-	path, filename := filepath.Split(filepath.FromSlash(path))
-
-	name, ok := strings.CutSuffix(filename, ".vpk")
-	if !ok {
-		return nil, fmt.Errorf("vpk %q name does not have .vpk extension", filename)
-	}
-
-	if len(name) < 4 || name[len(name)-4] != '_' {
-		return nil, fmt.Errorf("vpk %q name does not end with _XXX.vpk where XXX is the index or 'dir'", filename)
-	}
-	name, suffix := name[:len(name)-4], name[len(name)-4:]
-
-	if suffix == "_dir" {
-		name, ok = strings.CutPrefix(name, prefix)
-		if !ok {
-			return nil, fmt.Errorf("vpk %q name does not begin with prefix %q", filename, prefix)
-		}
-	}
-
-	return OpenReader(path, prefix, name)
-}
-
-// OpenReader opens the Titanfall 2 VPK in path with the provided name and root directory prefix.
-func OpenReader(path, prefix, name string) (*Reader, error) {
-	return NewReader(func(i ValvePakIndex) (io.ReaderAt, error) {
-		return os.Open(filepath.Join(path, ValvePakBlockName(prefix, name, i)))
-	})
-}
-
-// NewReader creates a new Reader reading the root directory from dir, and
-// opening the packed chunks from the provided function. If function returns
-// something implementing io.Closer, it will be closed when the Reader is
-// closed.
-func NewReader(data func(ValvePakIndex) (io.ReaderAt, error)) (*Reader, error) {
+// NewReader creates a new Reader reading from vpk.
+func NewReader(vpk ValvePak) (*Reader, error) {
 	r := &Reader{
-		data:  map[ValvePakIndex]io.ReaderAt{},
+		block: map[ValvePakIndex]io.ReaderAt{},
 		close: map[ValvePakIndex]io.Closer{},
 	}
 
 	// read dir index
-	dir, err := data(ValvePakIndexDir)
+	dir, err := vpk.Open(ValvePakIndexDir)
 	if err != nil {
-		return nil, fmt.Errorf("open data reader for dir index: %w", err)
+		return nil, fmt.Errorf("open vpk dir index: %w", err)
 	}
 	if err := r.Root.Deserialize(io.NewSectionReader(dir, 0, 1<<63-1)); err != nil {
 		return nil, fmt.Errorf("read root directory: %w", err)
@@ -78,20 +42,25 @@ func NewReader(data func(ValvePakIndex) (io.ReaderAt, error)) (*Reader, error) {
 	if dir, ok := dir.(io.Closer); ok {
 		r.close[ValvePakIndexDir] = dir
 	}
-	r.data[ValvePakIndexDir] = io.NewSectionReader(dir, int64(chunkOffset), 1<<63-1)
+	r.block[ValvePakIndexDir] = io.NewSectionReader(dir, int64(chunkOffset), 1<<63-1)
 
-	// open regular blocks
+	// open blocks
+	var errs []error
 	for _, b := range r.Root.File {
-		if _, ok := r.data[b.Index]; !ok {
-			if x, err := data(b.Index); err != nil {
-				return nil, fmt.Errorf("open raw data reader for index %d: %w", b.Index, err)
+		if _, ok := r.block[b.Index]; !ok {
+			if x, err := vpk.Open(b.Index); err != nil {
+				errs = append(errs, fmt.Errorf("open vpk block %s: %w", b.Index, err))
 			} else {
 				if x, ok := x.(io.Closer); ok {
 					r.close[b.Index] = x
 				}
-				r.data[b.Index] = x
+				r.block[b.Index] = x
 			}
 		}
+	}
+	if err := errors.Join(errs...); err != nil {
+		_ = r.Close()
+		return nil, fmt.Errorf("open blocks: %w", err)
 	}
 	return r, nil
 }
@@ -114,23 +83,23 @@ func (r *Reader) Close() error {
 
 // OpenFile returns a new reader reading the contents of a specific file. The checksum is verified at EOF.
 func (r *Reader) OpenFile(f ValvePakFile) (io.Reader, error) {
-	return f.CreateReader(r.data[f.Index])
+	return f.CreateReader(r.block[f.Index])
 }
 
 // OpenFileParallel is like OpenFile, but but decompresses chunks in parallel
 // using n goroutines going no more than n compressed chunks ahead.
 func (r *Reader) OpenFileParallel(f ValvePakFile, n int) (io.Reader, error) {
-	return f.CreateReaderParallel(r.data[f.Index], n)
+	return f.CreateReaderParallel(r.block[f.Index], n)
 }
 
 // OpenChunkRaw returns a new reader reading the contents of a specific chunk.
 func (r *Reader) OpenChunkRaw(f ValvePakFile, c ValvePakChunk) (io.Reader, error) {
-	return c.CreateReaderRaw(r.data[f.Index])
+	return c.CreateReaderRaw(r.block[f.Index])
 }
 
 // OpenBlockRaw opens a new reader reading the contents of a specific block.
 func (r *Reader) OpenBlockRaw(n ValvePakIndex) (io.ReaderAt, error) {
-	x, ok := r.data[n]
+	x, ok := r.block[n]
 	if !ok {
 		return nil, fmt.Errorf("block %#v out of range", n)
 	}

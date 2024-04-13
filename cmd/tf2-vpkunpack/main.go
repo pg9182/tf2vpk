@@ -49,37 +49,33 @@ func main() {
 		runtime.GOMAXPROCS(*Threads)
 	}
 
+	vpkOut := argv[0]
+
 	var (
-		r      *tf2vpk.Reader
-		err    error
-		vpkOut = argv[0]
+		err error
+		vpk tf2vpk.ValvePak
 	)
 	if len(argv) == 3 {
-		vpkDir, vpkName := argv[1], argv[2]
-
-		fmt.Printf("unpacking vpk %q (in %q) to %q\n", vpkName, vpkDir, vpkOut)
-
-		r, err = tf2vpk.OpenReader(vpkDir, *VPKPrefix, vpkName)
-		if err != nil {
-			err = fmt.Errorf("open vpk %q (prefix %q) from %q: %w", vpkName, *VPKPrefix, vpkDir, err)
-		}
+		fmt.Printf("unpacking vpk %q (in %q) to %q\n", argv[1], argv[2], vpkOut)
+		vpk, err = tf2vpk.VPK(argv[1], *VPKPrefix, argv[2]), nil
 	} else if len(argv) == 2 {
-		vpkPath := argv[1]
-
-		fmt.Printf("unpacking vpk %q to %q\n", vpkPath, vpkOut)
-
-		r, err = tf2vpk.OpenReaderPath(vpkPath, *VPKPrefix)
-		if err != nil {
-			err = fmt.Errorf("open vpk %q (prefix %q): %w", vpkPath, *VPKPrefix, err)
-		}
+		fmt.Printf("unpacking vpk %q to %q\n", argv[1], vpkOut)
+		vpk, err = tf2vpk.VPKFromPath(argv[1], *VPKPrefix)
 	} else {
 		fmt.Printf("initializing new vpk in %q\n", vpkOut)
+		vpk, err = nil, nil
 	}
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "error: resolve vpk: %v\n", err)
 		os.Exit(1)
 	}
-	if r != nil {
+
+	var r *tf2vpk.Reader
+	if vpk != nil {
+		if r, err = tf2vpk.NewReader(vpk); err != nil {
+			fmt.Fprintf(os.Stderr, "error: open vpk: %v\n", err)
+			os.Exit(1)
+		}
 		defer r.Close()
 	}
 

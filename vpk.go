@@ -20,16 +20,7 @@ const (
 	ValvePakVersionMajor             uint16 = 2
 	ValvePakVersionMinor             uint16 = 3
 	ValvePakMaxChunkUncompressedSize uint64 = 0x100000
-	ValvePakDirSuffix                string = "_dir.vpk"
 )
-
-// ValvePakBlockName generates the block filename.
-func ValvePakBlockName(prefix, vpkName string, blockIndex ValvePakIndex) string {
-	if blockIndex == ValvePakIndexDir {
-		return prefix + vpkName + "_" + blockIndex.String() + ".vpk"
-	}
-	return vpkName + "_" + blockIndex.String() + ".vpk"
-}
 
 // ValvePakDir is the root directory of a Titanfall 2 VPK, providing
 // byte-for-byte identical serialization/deserialization and validation (it will

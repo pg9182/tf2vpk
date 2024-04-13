@@ -46,26 +46,23 @@ func main() {
 		runtime.GOMAXPROCS(*Threads)
 	}
 
-	var r *tf2vpk.Reader
-	var err error
-
+	var (
+		err error
+		vpk tf2vpk.ValvePak
+	)
 	if len(argv) == 2 {
-		vpkDir, vpkName := argv[0], argv[1]
-
-		r, err = tf2vpk.OpenReader(vpkDir, *VPKPrefix, vpkName)
-		if err != nil {
-			err = fmt.Errorf("open vpk %q (prefix %q) from %q: %w", vpkName, *VPKPrefix, vpkDir, err)
-		}
+		vpk, err = tf2vpk.VPK(argv[0], *VPKPrefix, argv[1]), nil
 	} else {
-		vpkPath := argv[0]
-
-		r, err = tf2vpk.OpenReaderPath(vpkPath, *VPKPrefix)
-		if err != nil {
-			err = fmt.Errorf("open vpk %q (prefix %q): %w", vpkPath, *VPKPrefix, err)
-		}
+		vpk, err = tf2vpk.VPKFromPath(argv[0], *VPKPrefix)
 	}
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "error: resolve vpk: %v\n", err)
+		os.Exit(1)
+	}
+
+	r, err := tf2vpk.NewReader(vpk)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: open vpk: %v\n", err)
 		os.Exit(1)
 	}
 	defer r.Close()
