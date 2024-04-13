@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/pg9182/tf2vpk"
@@ -18,6 +19,7 @@ var (
 	VPKPrefix = pflag.StringP("vpk-prefix", "p", "english", "VPK prefix")
 	Verbose   = pflag.BoolP("verbose", "v", false, "Write information about processed files to stderr")
 	Test      = pflag.BoolP("test", "t", false, "Don't create a tar archive; only attempt to read the entire VPK and verify checksums")
+	Threads   = pflag.IntP("threads", "j", runtime.NumCPU(), "The number of decompression threads to use (0 to only decompress chunks as they are read) (defaults to the number of cores)")
 
 	Exclude = pflag.StringSlice("exclude", nil, "Excludes files or directories matching the provided glob (anchor to the start with /)")
 	Include = pflag.StringSlice("include", nil, "Negates --exclude for files or directories matching the provided glob")
@@ -35,6 +37,13 @@ func main() {
 			os.Exit(2)
 		}
 		return
+	}
+
+	if *Threads < 0 {
+		*Threads = 0
+	}
+	if *Threads > runtime.NumCPU() {
+		runtime.GOMAXPROCS(*Threads)
 	}
 
 	var r *tf2vpk.Reader
@@ -113,7 +122,7 @@ func main() {
 		if *Verbose {
 			fmt.Fprintf(os.Stderr, "%s\n", f.Path)
 		}
-		fr, err := r.OpenFile(f)
+		fr, err := r.OpenFileParallel(f, *Threads)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: read vpk file %q: %v\n", f.Path, err)
 			os.Exit(1)
