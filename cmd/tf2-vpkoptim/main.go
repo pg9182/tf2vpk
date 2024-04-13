@@ -14,6 +14,7 @@ import (
 
 	"github.com/pg9182/tf2vpk"
 	"github.com/pg9182/tf2vpk/internal"
+	"github.com/pg9182/tf2vpk/vpkutil"
 	"github.com/spf13/pflag"
 )
 
@@ -24,9 +25,7 @@ var (
 	DryRun    = pflag.BoolP("dry-run", "n", false, "Don't write output files")
 
 	Merge          = pflag.Bool("merge", false, "Merges all blocks (i.e., _XXX.vpk)")
-	Exclude        = pflag.StringSlice("exclude", nil, "Excludes files or directories matching the provided glob (anchor to the start with /)")
-	ExcludeBSPLump = pflag.IntSlice("exclude-bsp-lump", nil, "Shortcut for --exclude to remove %04x.bsp_lump")
-	Include        = pflag.StringSlice("include", nil, "Negates --exclude for files or directories matching the provided glob")
+	IncludeExclude = vpkutil.NewCLIIncludeExclude(pflag.CommandLine)
 
 	Help = pflag.BoolP("help", "h", false, "Show this help message")
 )
@@ -177,32 +176,9 @@ func optimize(ctx context.Context, inputDir, outputDir, vpkName string) error {
 	var nf []tf2vpk.ValvePakFile
 	var nfd int
 	for _, f := range r.Root.File {
-		var excluded bool
-		for _, x := range *Exclude {
-			if m, err := internal.MatchGlobParents(x, f.Path); err != nil {
-				return fmt.Errorf("process excludes: match %q against glob %q: %w", f.Path, x, err)
-			} else if m {
-				vlog(VDebug, "--- exclude %q: matched %q", x, f.Path)
-				excluded = true
-			}
-		}
-		for _, x := range *ExcludeBSPLump {
-			if m, err := internal.MatchGlobParents(fmt.Sprintf("%04x.bsp_lump", x), f.Path); err != nil {
-				return fmt.Errorf("process bsp lump excludes: match %q against glob %q: %w", f.Path, x, err)
-			} else if m {
-				vlog(VDebug, "--- exclude lump %d: matched %q", x, f.Path)
-				excluded = true
-			}
-		}
-		for _, x := range *Include {
-			if m, err := internal.MatchGlobParents(x, f.Path); err != nil {
-				return fmt.Errorf("process includes: match %q against glob %q: %w", f.Path, x, err)
-			} else if m {
-				excluded = false
-				vlog(VDebug, "--- include %q: matched %q", x, f.Path)
-			}
-		}
-		if excluded {
+		if skip, err := IncludeExclude.Skip(f); err != nil {
+			return err
+		} else if skip {
 			vlog(VVerbose, "--- excluding %s", f.Path)
 			nfd++
 			continue

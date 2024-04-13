@@ -10,11 +10,12 @@ import (
 
 	"github.com/pg9182/tf2vpk"
 	"github.com/pg9182/tf2vpk/internal"
+	"github.com/pg9182/tf2vpk/vpkutil"
 	"github.com/spf13/pflag"
 )
 
 var (
-	VPKPrefix = pflag.StringP("vpk-prefix", "p", "english", "VPK prefix")
+	ResolveOpen = vpkutil.NewCLIResolveOpen(pflag.CommandLine, 0, false)
 
 	HumanReadable      = pflag.BoolP("human-readable", "h", false, "Show values in human-readable form")
 	HumanReadableFlags = pflag.BoolP("human-readable-flags", "f", false, "If displaying flags, also show them in human-readable form at the very end of the line (delimited by a #)")
@@ -24,8 +25,7 @@ var (
 
 	Threads = pflag.IntP("threads", "j", runtime.NumCPU(), "The number of decompression threads to use while verifying checksums (0 to only decompress chunks as they are read) (defaults to the number of cores)")
 
-	Exclude = pflag.StringSlice("exclude", nil, "Excludes files or directories matching the provided glob (anchor to the start with /)")
-	Include = pflag.StringSlice("include", nil, "Negates --exclude for files or directories matching the provided glob")
+	IncludeExclude = vpkutil.NewCLIIncludeExclude(pflag.CommandLine)
 
 	Help = pflag.Bool("help", false, "Show this help message")
 )
@@ -33,9 +33,8 @@ var (
 func main() {
 	pflag.Parse()
 
-	argv := pflag.Args()
-	if len(argv) == 0 || len(argv) > 2 || *Help {
-		fmt.Fprintf(os.Stderr, "usage: %s [options] (vpk_dir vpk_name)|vpk_path\n\noptions:\n%s", os.Args[0], pflag.CommandLine.FlagUsages())
+	if !ResolveOpen.ArgCheck() || *Help {
+		fmt.Fprintf(os.Stderr, "usage: %s [options] %s\n\noptions:\n%s", os.Args[0], ResolveOpen.ArgHelp(), pflag.CommandLine.FlagUsages())
 		if !*Help {
 			os.Exit(2)
 		}
@@ -49,23 +48,9 @@ func main() {
 		runtime.GOMAXPROCS(*Threads)
 	}
 
-	var (
-		err error
-		vpk tf2vpk.ValvePak
-	)
-	if len(argv) == 2 {
-		vpk, err = tf2vpk.VPK(argv[0], *VPKPrefix, argv[1]), nil
-	} else {
-		vpk, err = tf2vpk.VPKFromPath(argv[0], *VPKPrefix)
-	}
+	_, r, err := ResolveOpen.ResolveOpen()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: resolve vpk: %v\n", err)
-		os.Exit(1)
-	}
-
-	r, err := tf2vpk.NewReader(vpk)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: open vpk: %v\n", err)
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 	defer r.Close()
@@ -77,24 +62,10 @@ func main() {
 
 	var testErrCount int
 	for _, f := range r.Root.File {
-		var excluded bool
-		for _, x := range *Exclude {
-			if m, err := internal.MatchGlobParents(x, f.Path); err != nil {
-				fmt.Fprintf(os.Stderr, "error: process excludes: match %q against glob %q: %v\n", f.Path, x, err)
-				os.Exit(1)
-			} else if m {
-				excluded = true
-			}
-		}
-		for _, x := range *Include {
-			if m, err := internal.MatchGlobParents(x, f.Path); err != nil {
-				fmt.Fprintf(os.Stderr, "error: process includes: match %q against glob %q: %v\n", f.Path, x, err)
-				os.Exit(1)
-			} else if m {
-				excluded = false
-			}
-		}
-		if excluded {
+		if skip, err := IncludeExclude.Skip(f); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		} else if skip {
 			continue
 		}
 

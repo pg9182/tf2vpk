@@ -9,20 +9,19 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/pg9182/tf2vpk"
-	"github.com/pg9182/tf2vpk/internal"
+	"github.com/pg9182/tf2vpk/vpkutil"
 	"github.com/spf13/pflag"
 )
 
 var (
-	Output    = pflag.StringP("output", "o", "-", "The file to write the tar archive to")
-	VPKPrefix = pflag.StringP("vpk-prefix", "p", "english", "VPK prefix")
-	Verbose   = pflag.BoolP("verbose", "v", false, "Write information about processed files to stderr")
-	Test      = pflag.BoolP("test", "t", false, "Don't create a tar archive; only attempt to read the entire VPK and verify checksums")
-	Threads   = pflag.IntP("threads", "j", runtime.NumCPU(), "The number of decompression threads to use (0 to only decompress chunks as they are read) (defaults to the number of cores)")
+	ResolveOpen = vpkutil.NewCLIResolveOpen(pflag.CommandLine, 0, false)
 
-	Exclude = pflag.StringSlice("exclude", nil, "Excludes files or directories matching the provided glob (anchor to the start with /)")
-	Include = pflag.StringSlice("include", nil, "Negates --exclude for files or directories matching the provided glob")
+	Output  = pflag.StringP("output", "o", "-", "The file to write the tar archive to")
+	Verbose = pflag.BoolP("verbose", "v", false, "Write information about processed files to stderr")
+	Test    = pflag.BoolP("test", "t", false, "Don't create a tar archive; only attempt to read the entire VPK and verify checksums")
+	Threads = pflag.IntP("threads", "j", runtime.NumCPU(), "The number of decompression threads to use (0 to only decompress chunks as they are read) (defaults to the number of cores)")
+
+	IncludeExclude = vpkutil.NewCLIIncludeExclude(pflag.CommandLine)
 
 	Help = pflag.BoolP("help", "h", false, "Show this help message")
 )
@@ -30,9 +29,8 @@ var (
 func main() {
 	pflag.Parse()
 
-	argv := pflag.Args()
-	if len(argv) == 0 || len(argv) > 2 || *Help {
-		fmt.Fprintf(os.Stderr, "usage: %s [options] (vpk_dir vpk_name)|vpk_path\n\noptions:\n%s", os.Args[0], pflag.CommandLine.FlagUsages())
+	if !ResolveOpen.ArgCheck() || *Help {
+		fmt.Fprintf(os.Stderr, "usage: %s [options] %s\n\noptions:\n%s", os.Args[0], ResolveOpen.ArgHelp(), pflag.CommandLine.FlagUsages())
 		if !*Help {
 			os.Exit(2)
 		}
@@ -46,23 +44,9 @@ func main() {
 		runtime.GOMAXPROCS(*Threads)
 	}
 
-	var (
-		err error
-		vpk tf2vpk.ValvePak
-	)
-	if len(argv) == 2 {
-		vpk, err = tf2vpk.VPK(argv[0], *VPKPrefix, argv[1]), nil
-	} else {
-		vpk, err = tf2vpk.VPKFromPath(argv[0], *VPKPrefix)
-	}
+	_, r, err := ResolveOpen.ResolveOpen()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: resolve vpk: %v\n", err)
-		os.Exit(1)
-	}
-
-	r, err := tf2vpk.NewReader(vpk)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: open vpk: %v\n", err)
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 	defer r.Close()
@@ -92,24 +76,10 @@ func main() {
 	}
 
 	for _, f := range r.Root.File {
-		var excluded bool
-		for _, x := range *Exclude {
-			if m, err := internal.MatchGlobParents(x, f.Path); err != nil {
-				fmt.Fprintf(os.Stderr, "error: process excludes: match %q against glob %q: %v\n", f.Path, x, err)
-				os.Exit(1)
-			} else if m {
-				excluded = true
-			}
-		}
-		for _, x := range *Include {
-			if m, err := internal.MatchGlobParents(x, f.Path); err != nil {
-				fmt.Fprintf(os.Stderr, "error: process includes: match %q against glob %q: %v\n", f.Path, x, err)
-				os.Exit(1)
-			} else if m {
-				excluded = false
-			}
-		}
-		if excluded {
+		if skip, err := IncludeExclude.Skip(f); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		} else if skip {
 			continue
 		}
 		var sz uint64
