@@ -2,6 +2,8 @@
 
 Libraries and tools for working with Titanfall 2 VPKs.
 
+[`Download`](https://nightly.link/pg9182/tf2vpk/workflows/ci/master?preview)
+
 ### Features
 
 - Command-line utilities.
@@ -131,6 +133,8 @@ tf2-vpklist -lhft /path/to/Titanfall2/vpk/englishclient_mp_angel_city.bsp.pak000
 ```
 
 ### Building
+
+Pre-built binaries for the latest commit can be found [here](https://nightly.link/pg9182/tf2vpk/workflows/ci/master?preview).
 
 Note that building with `CGO_ENABLED=1` results in a significant performance
 impact; tf2-vpk2tar is about 4-8x slower (even with parallelism).
