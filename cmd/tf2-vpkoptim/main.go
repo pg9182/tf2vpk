@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/pg9182/tf2vpk"
@@ -141,7 +140,7 @@ func optimize(ctx context.Context, inputDir, outputDir, vpkName string) error {
 	defer r.Close()
 
 	var origBlockBytesTotal uint64
-	origBlockBytes := map[uint16]uint64{}
+	origBlockBytes := map[tf2vpk.ValvePakIndex]uint64{}
 	for _, f := range r.Root.File {
 		for _, c := range f.Chunk {
 			if x := c.Offset + c.CompressedSize; x > origBlockBytes[f.Index] {
@@ -156,7 +155,7 @@ func optimize(ctx context.Context, inputDir, outputDir, vpkName string) error {
 	// TODO: use interval/segment trees to make this more efficient (time, space, and the resulting size)
 
 	type CID struct {
-		BlockIndex  uint16
+		BlockIndex  tf2vpk.ValvePakIndex
 		ChunkOffset uint64
 		ChunkSize   uint64
 	}
@@ -211,7 +210,7 @@ func optimize(ctx context.Context, inputDir, outputDir, vpkName string) error {
 	vlog(VStatus, "--- excluding %d files", nfd)
 	r.Root.File = nf
 
-	bf := map[uint16]io.Writer{}
+	bf := map[tf2vpk.ValvePakIndex]io.Writer{}
 	if *Merge {
 		tf, err := os.CreateTemp(outputDir, ".vpkblock0")
 		if err != nil {
@@ -236,7 +235,7 @@ func optimize(ctx context.Context, inputDir, outputDir, vpkName string) error {
 			if *DryRun {
 				bf[f.Index] = io.Discard
 			} else {
-				tf, err := os.CreateTemp(outputDir, ".vpkblock"+strconv.Itoa(int(f.Index))+"-*")
+				tf, err := os.CreateTemp(outputDir, ".vpkblock"+f.Index.String()+"-*")
 				if err != nil {
 					return fmt.Errorf("create temp file for vpk block %d: %w", f.Index, err)
 				}
@@ -253,8 +252,8 @@ func optimize(ctx context.Context, inputDir, outputDir, vpkName string) error {
 		vlog(VStatus, "--- writing %d block(s)", len(bf))
 	}
 
-	bfc := make(map[uint16]uint64, len(bf))              // current offset
-	bfw := make(map[uint16]map[[20]byte]uint64, len(bf)) // written chunk offset
+	bfc := make(map[tf2vpk.ValvePakIndex]uint64, len(bf))              // current offset
+	bfw := make(map[tf2vpk.ValvePakIndex]map[[20]byte]uint64, len(bf)) // written chunk offset
 
 	for x := range bf {
 		bfc[x] = 0
@@ -264,11 +263,14 @@ func optimize(ctx context.Context, inputDir, outputDir, vpkName string) error {
 	var cc int
 	var ccb int64
 	for i, f := range r.Root.File {
-		var targetIndex uint16
+		var targetIndex tf2vpk.ValvePakIndex
 		if *Merge {
 			targetIndex = 0
 		} else {
 			targetIndex = f.Index
+		}
+		if targetIndex == tf2vpk.ValvePakIndexDir {
+			panic("tf2-vpkoptim: writing chunks after index dir not implemented yet")
 		}
 		for j, c := range f.Chunk {
 			select {
@@ -363,16 +365,16 @@ func optimize(ctx context.Context, inputDir, outputDir, vpkName string) error {
 		default:
 		}
 
-		if err := os.Rename(df.Name(), filepath.Join(outputDir, tf2vpk.ValvePakDirName(*VPKPrefix, vpkName))); err != nil {
+		if err := os.Rename(df.Name(), filepath.Join(outputDir, tf2vpk.ValvePakBlockName(*VPKPrefix, vpkName, tf2vpk.ValvePakIndexDir))); err != nil {
 			return fmt.Errorf("rename final vpk dir: %w", err)
 		}
-		vlog(VDebug, "saved vpk dir %s", tf2vpk.ValvePakDirName(*VPKPrefix, vpkName))
+		vlog(VDebug, "saved vpk dir %s", tf2vpk.ValvePakBlockName(*VPKPrefix, vpkName, tf2vpk.ValvePakIndexDir))
 
 		for n, x := range bf {
-			if err := os.Rename(x.(*os.File).Name(), filepath.Join(outputDir, tf2vpk.ValvePakBlockName(vpkName, n))); err != nil {
+			if err := os.Rename(x.(*os.File).Name(), filepath.Join(outputDir, tf2vpk.ValvePakBlockName(*VPKPrefix, vpkName, n))); err != nil {
 				return fmt.Errorf("rename final vpk block: %w", err)
 			}
-			vlog(VDebug, "saved vpk block %s", tf2vpk.ValvePakBlockName(vpkName, n))
+			vlog(VDebug, "saved vpk block %s", tf2vpk.ValvePakBlockName(*VPKPrefix, vpkName, n))
 		}
 	}
 

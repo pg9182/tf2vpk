@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -22,14 +23,12 @@ const (
 	ValvePakDirSuffix                string = "_dir.vpk"
 )
 
-// ValvePakDirName generates the directory filename.
-func ValvePakDirName(prefix, vpkName string) string {
-	return prefix + vpkName + ValvePakDirSuffix
-}
-
 // ValvePakBlockName generates the block filename.
-func ValvePakBlockName(vpkName string, blockIndex uint16) string {
-	return fmt.Sprintf("%s_%03d.vpk", vpkName, blockIndex)
+func ValvePakBlockName(prefix, vpkName string, blockIndex ValvePakIndex) string {
+	if blockIndex == ValvePakIndexDir {
+		return prefix + vpkName + "_" + blockIndex.String() + ".vpk"
+	}
+	return vpkName + "_" + blockIndex.String() + ".vpk"
 }
 
 // ValvePakDir is the root directory of a Titanfall 2 VPK, providing
@@ -208,6 +207,23 @@ func (d ValvePakDir) TreeSize() (uint32, error) {
 	return uint32(b.N), nil
 }
 
+// ChunkOffset returns the starting offset of chunk data stored after the dir
+// index (i.e., add this to the ValvePakChunk.Offset when reading a chunk for a
+// file with ValvePakFile.Index == ValvePakIndexDir).
+func (d ValvePakDir) ChunkOffset() (n uint32, err error) {
+	n += uint32(binary.Size(d.Magic))
+	n += uint32(binary.Size(d.MajorVersion))
+	n += uint32(binary.Size(d.MinorVersion))
+	n += uint32(binary.Size(d.treeSize))
+	n += uint32(binary.Size(d.DataSize))
+
+	treeSize, err := d.TreeSize()
+	if err == nil {
+		n += treeSize
+	}
+	return n, err
+}
+
 type countWriter struct {
 	N int64
 }
@@ -297,12 +313,42 @@ func (d ValvePakDir) writeTree(w io.Writer) error {
 	return nil
 }
 
+// ValvePakIndex is an VPK block index.
+type ValvePakIndex uint16
+
+const (
+	ValvePakIndexDir ValvePakIndex = 0x7FFF // refers to data after the index in _dir.vpk
+	ValvePakIndexEOF ValvePakIndex = 0xFFFF // not actually one
+)
+
+func (i ValvePakIndex) String() string {
+	switch i {
+	case ValvePakIndexDir:
+		return "dir"
+	case ValvePakIndexEOF:
+		return "EOF"
+	default:
+		return fmt.Sprintf("%03d", i)
+	}
+}
+
+func (i ValvePakIndex) GoString() string {
+	switch i {
+	case ValvePakIndexDir:
+		return "ValvePakIndexDir"
+	case ValvePakIndexEOF:
+		return "ValvePakIndexEOF"
+	default:
+		return "ValvePakIndex(" + strconv.FormatUint(uint64(i), 10) + ")"
+	}
+}
+
 // ValvePakFile is a file in a Titanfall 2 VPK.
 type ValvePakFile struct {
 	Path         string
 	CRC32        uint32
 	PreloadBytes uint16
-	Index        uint16
+	Index        ValvePakIndex
 	Chunk        []ValvePakChunk
 }
 
@@ -445,11 +491,11 @@ func (f *ValvePakFile) Deserialize(r io.Reader, path string) error {
 			return fmt.Errorf("read file chunk: uncompressed size %d larger than %d", e.UncompressedSize, ValvePakMaxChunkUncompressedSize) // I'm not 100% sure about this limit
 		}
 
-		var n uint16
+		var n ValvePakIndex
 		if err := binary.Read(r, binary.LittleEndian, &n); err != nil {
 			return fmt.Errorf("read file chunk terminator: %w", err)
 		}
-		if n == 65535 {
+		if n == ValvePakIndexEOF {
 			break
 		} else if n != f.Index {
 			return fmt.Errorf("non-eof chunk terminator must equal the block index") // assumption based on observation

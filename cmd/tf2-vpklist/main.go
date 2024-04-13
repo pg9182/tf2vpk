@@ -122,9 +122,9 @@ func main() {
 
 		if *Long {
 			if *HumanReadable {
-				fmt.Printf("%03d %032b %016b %08X %6.2f %% %9s %9s  ", f.Index, load, texture, f.CRC32, float64(compressed)/float64(uncompressed)*100, formatBytesSIAligned(int64(compressed)), formatBytesSIAligned(int64(uncompressed)))
+				fmt.Printf("%s %032b %016b %08X %6.2f %% %9s %9s  ", f.Index, load, texture, f.CRC32, float64(compressed)/float64(uncompressed)*100, formatBytesSIAligned(int64(compressed)), formatBytesSIAligned(int64(uncompressed)))
 			} else {
-				fmt.Printf("%03d %032b %016b %08X %6.2f %% %9d %9d  ", f.Index, load, texture, f.CRC32, float64(compressed)/float64(uncompressed)*100, compressed, uncompressed)
+				fmt.Printf("%s %032b %016b %08X %6.2f %% %9d %9d  ", f.Index, load, texture, f.CRC32, float64(compressed)/float64(uncompressed)*100, compressed, uncompressed)
 			}
 		}
 		if *Test || (*Long && *HumanReadableFlags) {
