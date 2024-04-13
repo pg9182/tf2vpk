@@ -1,4 +1,6 @@
-github.com/pg9182/tf2lzham v0.0.5 h1:qv3jFQKGHNEyMiFsPbF/uny4JYv3G/xRpJd6LUZV2+s=
-github.com/pg9182/tf2lzham v0.0.5/go.mod h1:IWz60zIeLX3Kd1Z7XE9RbqNbZiXxOvcF6H9sz5yVFUU=
+github.com/pg9182/tf2lzham v0.0.7 h1:3FzOGFDzsAeXoENhwQEkERkvbfxi6ZK87zWjz7mDA4k=
+github.com/pg9182/tf2lzham v0.0.7/go.mod h1:jmffn2XEql5BvNnEChzXvzBV0p/4cfs+jW0ngPXTvoQ=
 github.com/spf13/pflag v1.0.5 h1:iy+VFUOCP1a+8yFto/drg2CJ5u0yRoB7fZw3DKv/JXA=
 github.com/spf13/pflag v1.0.5/go.mod h1:McXfInJRrz4CZXVZOBLb0bTZqETkiAhM9Iw0y3An2Bg=
+github.com/tetratelabs/wazero v1.7.0 h1:jg5qPydno59wqjpGrHph81lbtHzTrWzwwtD4cD88+hQ=
+github.com/tetratelabs/wazero v1.7.0/go.mod h1:ytl6Zuh20R/eROuyDaGPkp82O9C/DJfXAwJfQ3X6/7Y=
