@@ -13,6 +13,10 @@ import (
 	"github.com/pg9182/tf2vpk/internal"
 )
 
+// VPKFlagsFilename is the name of the vpkflags file. It should be at the root
+// of the folder to be packed.
+const VPKFlagsFilename = ".vpkflags"
+
 // VPKFlags is a list of rules for adding flags to files in a VPK. The rules are
 // matched in reverse order, i.e., the last one takes effect.
 type VPKFlags struct {

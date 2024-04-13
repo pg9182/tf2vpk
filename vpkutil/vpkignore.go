@@ -10,6 +10,10 @@ import (
 	"github.com/pg9182/tf2vpk/internal"
 )
 
+// VPKIgnoreFilename is the name of the vpkignore file. It should be at the root
+// of the folder to be packed.
+const VPKIgnoreFilename = ".vpkignore"
+
 // VPKIgnore is a list of patterns to ignore when packing a VPK file in a
 // similar fashion to gitignore.
 //
