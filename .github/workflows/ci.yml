@@ -1,0 +1,69 @@
+name: ci
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+      - run: go test -trimpath -v ./...
+
+  build:
+    name: build - ${{matrix.os}}/${{matrix.arch}}
+    runs-on: ${{matrix.runs-on}}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runs-on: ubuntu-latest,  os: linux,   arch: amd64, cgo: 1 }
+          - { runs-on: windows-latest, os: windows, arch: amd64, cgo: 1, flags: -ldflags "-extldflags=-static" }
+          - { runs-on: windows-latest, os: windows, arch: arm64, cgo: 0 }
+          - { runs-on: macos-latest,   os: darwin,  arch: amd64, cgo: 1 }
+          - { runs-on: macos-latest,   os: darwin,  arch: arm64, cgo: 1 }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Build (tf2-vpk2tar)
+        env:
+          GOOS: ${{matrix.os}}
+          GOARCH: ${{matrix.arch}}
+          CGO_ENABLED: ${{matrix.cgo}}
+        run: go build ${{matrix.flags}} -trimpath -v -x ./cmd/tf2-vpk2tar
+
+      - name: Build (tf2-vpkunpack)
+        env:
+          GOOS: ${{matrix.os}}
+          GOARCH: ${{matrix.arch}}
+          CGO_ENABLED: ${{matrix.cgo}}
+        run: go build ${{matrix.flags}} -trimpath -v -x ./cmd/tf2-vpklist
+
+      - name: Build (tf2-vpkoptim)
+        env:
+          GOOS: ${{matrix.os}}
+          GOARCH: ${{matrix.arch}}
+          CGO_ENABLED: ${{matrix.cgo}}
+        run: go build ${{matrix.flags}} -trimpath -v -x ./cmd/tf2-vpkoptim
+
+      - name: Build (tf2-vpkunpack)
+        env:
+          GOOS: ${{matrix.os}}
+          GOARCH: ${{matrix.arch}}
+          CGO_ENABLED: ${{matrix.cgo}}
+        run: go build ${{matrix.flags}} -trimpath -v -x ./cmd/tf2-vpkunpack
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tf2vpk-${{matrix.os}}-${{matrix.arch}}${{fromJSON('["-wasm",""]')[matrix.cgo]}}
+          path: tf2-*
