@@ -92,8 +92,14 @@ func (d *ValvePakDir) Deserialize(r io.Reader) error {
 				if xn == "" {
 					break
 				}
+				var fn string
+				if xp == " " {
+					fn = xn + "." + xx
+				} else {
+					fn = xp + "/" + xn + "." + xx
+				}
 				var f ValvePakFile
-				if err := f.Deserialize(b, xp+"/"+xn+"."+xx); err != nil {
+				if err := f.Deserialize(b, fn); err != nil {
 					return fmt.Errorf("read directory tree file data for %q: %w", f.Path, err)
 				}
 				//fmt.Println(xx, xp, xn)
@@ -184,7 +190,8 @@ func (d *ValvePakDir) SortFiles() error {
 func splitPath(p string) (ext, path, base string, err error) {
 	i1 := strings.LastIndex(p, "/")
 	if i1 == -1 {
-		return "", "", "", fmt.Errorf("no path for file %q", p)
+		p = " /" + p
+		i1 = 1
 	}
 	i2 := strings.LastIndex(p[i1:], ".")
 	if i2 == -1 {
