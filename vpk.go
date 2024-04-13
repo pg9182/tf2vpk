@@ -8,6 +8,7 @@ import (
 	"io"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/pg9182/tf2lzham"
 )
@@ -326,6 +327,12 @@ func (f *ValvePakFile) TextureFlags() (uint16, error) {
 
 // CreateReader creates a new reader for the file, checking the CRC32 at EOF.
 func (f *ValvePakFile) CreateReader(r io.ReaderAt) (io.Reader, error) {
+	return f.CreateReaderParallel(r, 1)
+}
+
+// CreateReaderParallel is like CreateReader, but decompresses chunks in
+// parallel using n goroutines going no more than n compressed chunks ahead.
+func (f *ValvePakFile) CreateReaderParallel(r io.ReaderAt, n int) (io.Reader, error) {
 	rs := make([]io.Reader, len(f.Chunk))
 	var sz uint64
 	var err error
@@ -336,7 +343,64 @@ func (f *ValvePakFile) CreateReader(r io.ReaderAt) (io.Reader, error) {
 		}
 		sz += c.UncompressedSize
 	}
-	return newCRCReader(io.MultiReader(rs...), sz, f.CRC32), nil
+	return newCRCReader(newMultiChunkReader(n, rs...), sz, f.CRC32), nil
+}
+
+type multiChunkReader struct {
+	readers  []io.Reader
+	parallel int
+}
+
+func newMultiChunkReader(parallel int, rd ...io.Reader) *multiChunkReader {
+	return &multiChunkReader{readers: rd, parallel: parallel}
+}
+
+func (mr *multiChunkReader) Read(p []byte) (n int, err error) {
+	for len(mr.readers) > 0 {
+		n, err = mr.readers[0].Read(p)
+		if err == io.EOF {
+			mr.readers[0], mr.readers = nil, mr.readers[1:]
+
+			if ahead := mr.parallel; ahead > 0 {
+				for _, r := range mr.readers {
+					if r, ok := r.(interface {
+						// EnsureDecompressed synchronously decompresses the
+						// block if needed. It must be safe to be called in
+						// concurrently with Read.
+						EnsureDecompressed() error
+					}); ok {
+						go r.EnsureDecompressed()
+						if ahead--; ahead == 0 {
+							break
+						}
+					}
+				}
+			}
+		}
+		if n > 0 || err != io.EOF {
+			if err == io.EOF && len(mr.readers) > 0 {
+				err = nil
+			}
+			return
+		}
+	}
+	return 0, io.EOF
+}
+
+func (mr *multiChunkReader) WriteTo(w io.Writer) (sum int64, err error) {
+	buf := make([]byte, 1024*32)
+	for i, r := range mr.readers {
+		var n int64
+		n, err = io.CopyBuffer(w, r, buf)
+		sum += n
+		if err != nil {
+			mr.readers = mr.readers[i:]
+			return sum, err
+		}
+		mr.readers[i] = nil
+	}
+	mr.readers = nil
+	return sum, nil
 }
 
 // Deserialize parses a ValvePakFile from r.
@@ -459,34 +523,65 @@ type lzhamLazyReader struct {
 	csz int64
 	dsz int64
 
+	m sync.Mutex
 	b []byte
+	e error
 	n uint64
 }
 
 func newLZHAMLazyReader(r io.ReaderAt, off, csz, dsz int64) io.Reader {
-	return &lzhamLazyReader{r, off, csz, dsz, nil, 0}
+	return &lzhamLazyReader{r: r, off: off, csz: csz, dsz: dsz}
 }
 
 func (r *lzhamLazyReader) Read(b []byte) (n int, err error) {
-	if r.b == nil {
-		src := make([]byte, int(r.csz))
-		if _, err := r.r.ReadAt(src, r.off); err != nil {
-			return 0, fmt.Errorf("read chunk: %w", err)
-		}
-		dst := make([]byte, int(r.dsz))
-		if n, _, _, err := tf2lzham.Decompress(dst, src); err != nil {
-			return 0, fmt.Errorf("decompress chunk: %w", err)
-		} else if n != len(dst) {
-			return 0, fmt.Errorf("decompress chunk: result is %d bytes, but expected %d", n, r.dsz)
-		}
-		r.b = dst
+	r.m.Lock()
+	defer r.m.Unlock()
+
+	if r.e != nil {
+		return 0, r.e
 	}
-	if r.n >= uint64(len(r.b)) {
-		return 0, io.EOF
+	if r.decompress(); r.e != nil {
+		return 0, r.e
+	}
+	if r.n >= uint64(r.dsz) {
+		r.b = nil
+		r.e = io.EOF
+		return 0, r.e
 	}
 	n = copy(b, r.b[r.n:])
 	r.n += uint64(n)
 	return
+}
+
+func (r *lzhamLazyReader) EnsureDecompressed() error {
+	r.m.Lock()
+	defer r.m.Unlock()
+
+	return r.decompress()
+}
+
+func (r *lzhamLazyReader) decompress() error {
+	if r.e != nil {
+		return r.e
+	}
+	if r.b != nil {
+		return nil
+	}
+	src := make([]byte, int(r.csz))
+	if _, err := r.r.ReadAt(src, r.off); err != nil {
+		r.e = fmt.Errorf("read chunk: %w", err)
+		return r.e
+	}
+	dst := make([]byte, int(r.dsz))
+	if n, _, _, err := tf2lzham.Decompress(dst, src); err != nil {
+		r.e = fmt.Errorf("decompress chunk: %w", err)
+		return r.e
+	} else if n != len(dst) {
+		r.e = fmt.Errorf("decompress chunk: %w", err)
+		return r.e
+	}
+	r.b = dst
+	return nil
 }
 
 // CreateReader creates a new reader for the raw data of the chunk.

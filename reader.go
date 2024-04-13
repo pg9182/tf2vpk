@@ -113,6 +113,12 @@ func (r *Reader) OpenFile(f ValvePakFile) (io.Reader, error) {
 	return f.CreateReader(r.data[f.Index])
 }
 
+// OpenFileParallel is like OpenFile, but but decompresses chunks in parallel
+// using n goroutines going no more than n compressed chunks ahead.
+func (r *Reader) OpenFileParallel(f ValvePakFile, n int) (io.Reader, error) {
+	return f.CreateReaderParallel(r.data[f.Index], n)
+}
+
 // OpenChunkRaw returns a new reader reading the contents of a specific chunk.
 func (r *Reader) OpenChunkRaw(f ValvePakFile, c ValvePakChunk) (io.Reader, error) {
 	return c.CreateReaderRaw(r.data[f.Index])
