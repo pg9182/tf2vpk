@@ -9,10 +9,24 @@ import (
 // MatchGlobParents is like path.Match, but will match if any component matches
 // with optional anchoring.
 func MatchGlobParents(pattern string, name string) (matched bool, err error) {
-	var anchor bool
-	if strings.HasPrefix(pattern, "/") {
-		pattern, anchor = pattern[1:], true
+	// some basic normalization
+	pattern = strings.ReplaceAll(pattern, "\\", "/")
+	name = strings.ReplaceAll(name, "\\", "/")
+	name = strings.Trim(name, "/")
+
+	// check if anchored
+	pattern, anchor := strings.CutPrefix(pattern, "/")
+
+	// remove consecutive and extra leading/trailing slashes
+	pattern = strings.Join(strings.FieldsFunc(pattern, func(r rune) bool { return r == '/' }), "/")
+	name = strings.Join(strings.FieldsFunc(name, func(r rune) bool { return r == '/' }), "/")
+
+	// special case: if anchored but empty, match everything
+	if anchor && pattern == "" {
+		return true, nil
 	}
+
+	// actually do the match
 	for name != "" {
 		// test against the full path
 		if m, err := path.Match(pattern, name); m || err != nil {
@@ -21,7 +35,7 @@ func MatchGlobParents(pattern string, name string) (matched bool, err error) {
 		// split it
 		parent, base := path.Split(name)
 		if !anchor {
-			// test against the filename
+			// test against the just the current basename
 			if m, err := path.Match(pattern, base); m || err != nil {
 				return m, err
 			}
