@@ -299,17 +299,17 @@ type ValvePakFile struct {
 	Chunk        []ValvePakChunk
 }
 
-// EntryFlags gets the entry flags for the file.
-func (f *ValvePakFile) EntryFlags() (uint32, error) {
+// LoadFlags gets the load flags for the file.
+func (f *ValvePakFile) LoadFlags() (uint32, error) {
 	if len(f.Chunk) == 0 {
 		return 0, fmt.Errorf("invalid file: no chunks")
 	}
 	for _, c := range f.Chunk {
-		if c.EntryFlags != f.Chunk[0].EntryFlags {
-			return 0, fmt.Errorf("invalid file: entry flags don't match for all chunks")
+		if c.LoadFlags != f.Chunk[0].LoadFlags {
+			return 0, fmt.Errorf("invalid file: load flags don't match for all chunks")
 		}
 	}
-	return f.Chunk[0].EntryFlags, nil
+	return f.Chunk[0].LoadFlags, nil
 }
 
 // TextureFlags gets the texture flags for the file.
@@ -428,8 +428,8 @@ func (f *ValvePakFile) Deserialize(r io.Reader, path string) error {
 		if f.Path != "" && e.TextureFlags != 0 && !strings.HasSuffix(f.Path, ".vtf") {
 			return fmt.Errorf("read file chunk: expected non-vtf to not have texture flags")
 		}
-		if e.EntryFlags != f.Chunk[0].EntryFlags {
-			return fmt.Errorf("read file chunk: expected entry flags to be the same for all chunks")
+		if e.LoadFlags != f.Chunk[0].LoadFlags {
+			return fmt.Errorf("read file chunk: expected load flags to be the same for all chunks")
 		}
 		if e.TextureFlags != f.Chunk[0].TextureFlags {
 			return fmt.Errorf("read file chunk: expected texture flags to be the same for all chunks")
@@ -469,8 +469,8 @@ func (f ValvePakFile) Serialize(w io.Writer) error {
 		if f.Path != "" && e.TextureFlags != 0 && !strings.HasSuffix(f.Path, ".vtf") {
 			return fmt.Errorf("write file chunk: expected non-vtf to not have texture flags")
 		}
-		if e.EntryFlags != f.Chunk[0].EntryFlags {
-			return fmt.Errorf("write file chunk: expected entry flags to be the same for all chunks")
+		if e.LoadFlags != f.Chunk[0].LoadFlags {
+			return fmt.Errorf("write file chunk: expected load flags to be the same for all chunks")
 		}
 		if e.TextureFlags != f.Chunk[0].TextureFlags {
 			return fmt.Errorf("write file chunk: expected texture flags to be the same for all chunks")
@@ -496,7 +496,7 @@ func (f ValvePakFile) Serialize(w io.Writer) error {
 
 // ValvePakChunk is a file chunk (possibly shared) in a Titanfall 2 VPK.
 type ValvePakChunk struct {
-	EntryFlags       uint32 // note: these flags seem to be the same for all chunks in a ValvePakFile
+	LoadFlags        uint32 // note: these flags seem to be the same for all chunks in a ValvePakFile
 	TextureFlags     uint16 // ^, and these ones only seem to be on VTF files
 	Offset           uint64
 	CompressedSize   uint64
@@ -591,9 +591,9 @@ func (c ValvePakChunk) CreateReaderRaw(r io.ReaderAt) (io.Reader, error) {
 
 // Deserialize parses a ValvePakChunk from r.
 func (c *ValvePakChunk) Deserialize(r io.Reader) error {
-	if err := binary.Read(r, binary.LittleEndian, &c.EntryFlags); err != nil {
+	if err := binary.Read(r, binary.LittleEndian, &c.LoadFlags); err != nil {
 		return fmt.Errorf("read chunk flags: %w", err)
-	} else if c.EntryFlags == 0 {
+	} else if c.LoadFlags == 0 {
 		return fmt.Errorf("read chunk flags: must be non-zero")
 	}
 	if err := binary.Read(r, binary.LittleEndian, &c.TextureFlags); err != nil {
@@ -617,9 +617,9 @@ func (c *ValvePakChunk) Deserialize(r io.Reader) error {
 
 // Serialize writes an encoded ValvePakChunk to w.
 func (c ValvePakChunk) Serialize(w io.Writer) error {
-	if c.EntryFlags == 0 {
+	if c.LoadFlags == 0 {
 		return fmt.Errorf("write chunk flags: must be non-zero")
-	} else if err := binary.Write(w, binary.LittleEndian, &c.EntryFlags); err != nil {
+	} else if err := binary.Write(w, binary.LittleEndian, &c.LoadFlags); err != nil {
 		return fmt.Errorf("write chunk flags: %w", err)
 	}
 	if err := binary.Write(w, binary.LittleEndian, c.TextureFlags); err != nil {
