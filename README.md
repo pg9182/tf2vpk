@@ -141,6 +141,7 @@ impact; tf2-vpk2tar is about 4-8x slower (even with parallelism).
 CGO_ENABLED=1 go build -trimpath -v -x ./cmd/tf2-vpk2tar
 CGO_ENABLED=1 go build -trimpath -v -x ./cmd/tf2-vpkoptim
 CGO_ENABLED=1 go build -trimpath -v -x ./cmd/tf2-vpklist
+CGO_ENABLED=1 go build -trimpath -v -x ./cmd/tf2-vpkunpack
 ```
 
 #### Build without a C compiler
@@ -149,6 +150,7 @@ CGO_ENABLED=1 go build -trimpath -v -x ./cmd/tf2-vpklist
 CGO_ENABLED=0 go build -trimpath -v -x ./cmd/tf2-vpk2tar
 CGO_ENABLED=0 go build -trimpath -v -x ./cmd/tf2-vpkoptim
 CGO_ENABLED=0 go build -trimpath -v -x ./cmd/tf2-vpklist
+CGO_ENABLED=0 go build -trimpath -v -x ./cmd/tf2-vpkunpack
 ```
 
 #### Build for Windows using MinGW
@@ -157,6 +159,7 @@ CGO_ENABLED=0 go build -trimpath -v -x ./cmd/tf2-vpklist
 CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ HOST=x86_64-w64-mingw32 go build -trimpath -v -x ./cmd/tf2-vpk2tar
 CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ HOST=x86_64-w64-mingw32 go build -trimpath -v -x ./cmd/tf2-vpkoptim
 CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ HOST=x86_64-w64-mingw32 go build -trimpath -v -x ./cmd/tf2-vpklist
+CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ HOST=x86_64-w64-mingw32 go build -trimpath -v -x ./cmd/tf2-vpkunpack
 ```
 
 #### Build for Windows without using MinGW
@@ -165,6 +168,7 @@ CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64
 CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -v -x ./cmd/tf2-vpk2tar
 CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -v -x ./cmd/tf2-vpkoptim
 CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -v -x ./cmd/tf2-vpklist
+CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -v -x ./cmd/tf2-vpkunpack
 ```
 
 ### VPK unpacking/packing
