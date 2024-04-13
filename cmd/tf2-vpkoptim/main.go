@@ -4,8 +4,10 @@ package main
 import (
 	"context"
 	"crypto/sha1"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -65,6 +67,11 @@ func main() {
 		os.Exit(1)
 	} else {
 		inputDir = x
+	}
+
+	if err := os.Mkdir(*Output, 0777); err != nil && !errors.Is(err, fs.ErrExist) {
+		fmt.Fprintf(os.Stderr, "error: failed to create output directory: %v\n", err)
+		os.Exit(1)
 	}
 
 	var outputDir string
