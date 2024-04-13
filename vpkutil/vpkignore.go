@@ -35,6 +35,8 @@ type vpkIgnoreRule struct {
 
 // AddDefault adds some general rules.
 func (v *VPKIgnore) AddDefault() {
+	v.rules = append(v.rules, vpkIgnoreRule{"*.vpk", false})
+	v.rules = append(v.rules, vpkIgnoreRule{"/.vpk*", false})
 	v.rules = append(v.rules, vpkIgnoreRule{".nfs*", false})
 	v.rules = append(v.rules, vpkIgnoreRule{".directory", false})
 	v.rules = append(v.rules, vpkIgnoreRule{".Trash-*", false})
