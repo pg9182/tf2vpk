@@ -37,6 +37,30 @@ func OpenReader(path, prefix, name string) (*Reader, error) {
 	})
 }
 
+// OpenReaderPath is like OpenReader, but takes the full path to a VPK.
+func OpenReaderPath(path, prefix string) (*Reader, error) {
+	path, filename := filepath.Split(filepath.FromSlash(path))
+
+	name, ok := strings.CutSuffix(filename, ".vpk")
+	if !ok {
+		return nil, fmt.Errorf("vpk %q name does not have .vpk extension", filename)
+	}
+
+	if len(name) < 4 || name[len(name)-4] != '_' {
+		return nil, fmt.Errorf("vpk %q name does not end with _XXX.vpk where XXX is the index or 'dir'", filename)
+	}
+	name, suffix := name[:len(name)-4], name[len(name)-4:]
+
+	if suffix == "_dir" {
+		name, ok = strings.CutPrefix(name, prefix)
+		if !ok {
+			return nil, fmt.Errorf("vpk %q name does not begin with prefix %q", filename, prefix)
+		}
+	}
+
+	return OpenReader(path, prefix, name)
+}
+
 // NewReader creates a new Reader reading the root directory from dir, and opening the packed chunks from the provided
 // function.
 func NewReader(dir io.Reader, data func(uint16) (interface {
