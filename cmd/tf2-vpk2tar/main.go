@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/pg9182/tf2vpk"
-	"github.com/pg9182/tf2vpk/cmd/internal"
+	"github.com/pg9182/tf2vpk/internal"
 	"github.com/spf13/pflag"
 )
 
