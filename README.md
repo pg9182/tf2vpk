@@ -94,6 +94,8 @@ tf2-vpkoptim /path/to/Titanfall2/vpk \
     --output /path/to/new/vpks
 ```
 
+Remember to copy the `enable.txt` file from the original vpk folder to the new one, or the game won't work.
+
 #### Optimize and remove unnecessary files from VPKs for the Northstar dedicated server
 
 The following command also removes large files only used by the client.
@@ -107,6 +109,8 @@ tf2-vpkoptim /path/to/Titanfall2/vpk \
     --exclude '*.bsp_lump' \
     --output /path/to/new/vpks
 ```
+
+Remember to copy the `enable.txt` file from the original vpk folder to the new one, or the game won't work.
 
 #### List a VPK verbosely and verify checksums
 
