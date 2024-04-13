@@ -65,6 +65,9 @@ tf2-vpkoptim /path/to/Titanfall2/vpk \
 
 ### Building
 
+Note that building with `CGO_ENABLED=1` results in a significant performance
+impact; tf2-vpk2tar is about 4-8x slower (even with parallelism).
+
 #### Build with a C compiler:
 
 ```
