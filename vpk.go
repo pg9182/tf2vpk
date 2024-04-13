@@ -494,6 +494,50 @@ func (f ValvePakFile) Serialize(w io.Writer) error {
 	return nil
 }
 
+// Names for flag 1<<index. Based on https://github.com/barnabwhy/sourcepak-rs/blob/fb475240380851463bde3140f01b968d8b2e02c0/src/pak/revpk/format.rs#L93-L109.
+var (
+	loadFlags = [32]string{
+		0:  "VISIBLE",
+		8:  "CACHE",
+		10: "ACACHE_UNK0",
+		18: "TEXTURE_UNK0",
+		19: "TEXTURE_UNK1",
+		20: "TEXTURE_UNK2",
+	}
+	textureFlags = [16]string{
+		3:  "DEFAULT",
+		10: "ENVIRONMENT_MAP",
+	}
+)
+
+// DescribeLoadFlags returns a human-readable slice of strings describing the
+// provided load flags.
+func DescribeLoadFlags(flags uint32) (s []string) {
+	for i, x := range loadFlags {
+		if flags&(uint32(1)<<i) != 0 {
+			if x != "" {
+				x = ":" + x
+			}
+			s = append(s, fmt.Sprintf("%02d%s", i, x))
+		}
+	}
+	return
+}
+
+// DescribeTextureFlags returns a human-readable slice of strings describing the
+// provided texture flags.
+func DescribeTextureFlags(flags uint16) (s []string) {
+	for i, x := range textureFlags {
+		if flags&(uint16(1)<<i) != 0 {
+			if x != "" {
+				x = ":" + x
+			}
+			s = append(s, fmt.Sprintf("%02d%s", i, x))
+		}
+	}
+	return
+}
+
 // ValvePakChunk is a file chunk (possibly shared) in a Titanfall 2 VPK.
 type ValvePakChunk struct {
 	LoadFlags        uint32 // note: these flags seem to be the same for all chunks in a ValvePakFile
