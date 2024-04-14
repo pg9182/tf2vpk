@@ -35,6 +35,13 @@ jobs:
         with:
           go-version-file: 'go.mod'
 
+      - name: Build (tf2vpk)
+        env:
+          GOOS: ${{matrix.os}}
+          GOARCH: ${{matrix.arch}}
+          CGO_ENABLED: ${{matrix.cgo}}
+        run: go build ${{matrix.flags}} -trimpath -v -x ./cmd/tf2vpk
+
       - name: Build (tf2-vpk2tar)
         env:
           GOOS: ${{matrix.os}}
@@ -66,4 +73,4 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: tf2vpk-${{matrix.os}}-${{matrix.arch}}${{fromJSON('["-wasm",""]')[matrix.cgo]}}
-          path: tf2-*
+          path: tf2*
