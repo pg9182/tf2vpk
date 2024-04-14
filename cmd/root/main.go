@@ -39,7 +39,7 @@ var GroupVPK = &cobra.Group{
 }
 
 var GroupVPKRepacking = &cobra.Group{
-	ID:    "vpk",
+	ID:    "repacking",
 	Title: "Repacking Commands:",
 }
 
