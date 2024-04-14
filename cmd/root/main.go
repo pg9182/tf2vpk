@@ -194,42 +194,39 @@ func ArgVPK(out *tf2vpk.ValvePak, cmd *cobra.Command, i int, multi, dirs, files 
 	}
 }
 
-// FlagExcludeInclude adds --exclude and --include flags, returning a function
+// FlagIncludeExclude adds --exclude and --include flags, returning a function
 // checking if a file is excluded.
-func FlagIncludeExclude(cmd *cobra.Command, short bool) func(tf2vpk.ValvePakFile) (bool, error) {
-	var Exclude, Include *[]string
+func FlagIncludeExclude(out *func(tf2vpk.ValvePakFile) (bool, error), cmd *cobra.Command, short bool) {
+	var Include, Exclude *[]string
 	var (
-		ExcludeDoc = "Excludes files or directories matching the provided glob (anchor to the start with /)"
-		IncludeDoc = "Negates --exclude for files or directories matching the provided glob (if only includes are provided, it excludes everything else)"
+		IncludeDoc = "Includes only files or directories matching one of the provided globs (matches everything if not specified)"
+		ExcludeDoc = "Negates --include for files or directories matching the provided glob"
 	)
 	if short {
-		Exclude = cmd.Flags().StringSliceP("exclude", "e", nil, ExcludeDoc)
-		Include = cmd.Flags().StringSliceP("include", "E", nil, IncludeDoc)
+		Include = cmd.Flags().StringSliceP("include", "e", nil, IncludeDoc)
+		Exclude = cmd.Flags().StringSliceP("exclude", "E", nil, ExcludeDoc)
 	} else {
-		Exclude = cmd.Flags().StringSlice("exclude", nil, ExcludeDoc)
 		Include = cmd.Flags().StringSlice("include", nil, IncludeDoc)
+		Exclude = cmd.Flags().StringSlice("exclude", nil, ExcludeDoc)
 	}
-	return func(f tf2vpk.ValvePakFile) (bool, error) {
-		var excluded bool
-		for _, x := range *Exclude {
-			if m, err := internal.MatchGlobParents(x, f.Path); err != nil {
-				return false, fmt.Errorf("process excludes: match %q against glob %q: %w", f.Path, x, err)
-			} else if m {
-				excluded = true
-				break
-			}
-		}
-		if len(*Exclude) == 0 {
-			excluded = true
-		}
+	*out = func(f tf2vpk.ValvePakFile) (bool, error) {
+		included := len(*Include) == 0
 		for _, x := range *Include {
 			if m, err := internal.MatchGlobParents(x, f.Path); err != nil {
 				return false, fmt.Errorf("process includes: match %q against glob %q: %w", f.Path, x, err)
 			} else if m {
-				excluded = false
+				included = true
 				break
 			}
 		}
-		return excluded, nil
+		for _, x := range *Exclude {
+			if m, err := internal.MatchGlobParents(x, f.Path); err != nil {
+				return false, fmt.Errorf("process excludes: match %q against glob %q: %w", f.Path, x, err)
+			} else if m {
+				included = false
+				break
+			}
+		}
+		return !included, nil
 	}
 }
