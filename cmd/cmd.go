@@ -13,6 +13,7 @@ import (
 	_ "github.com/pg9182/tf2vpk/cmd/unpack"
 	_ "github.com/pg9182/tf2vpk/cmd/verify"
 	_ "github.com/pg9182/tf2vpk/cmd/version"
+	_ "github.com/pg9182/tf2vpk/cmd/vpkfiles"
 	_ "github.com/pg9182/tf2vpk/cmd/vpkflags"
 )
 
