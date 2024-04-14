@@ -38,8 +38,13 @@ var GroupVPK = &cobra.Group{
 	Title: "Commands:",
 }
 
+var GroupVPKRepacking = &cobra.Group{
+	ID:    "vpk",
+	Title: "Repacking Commands:",
+}
+
 func init() {
-	Command.AddGroup(GroupVPK)
+	Command.AddGroup(GroupVPK, GroupVPKRepacking)
 	Command.PersistentFlags().StringVar(&Flags.VPKDir, "vpk-dir", "", "set the vpk directory, and use vpk names instead of paths")
 	Command.PersistentFlags().StringVar(&Flags.VPKPrefix, "vpk-prefix", "english", "the vpk locale prefix to use")
 	Command.PersistentFlags().IntVarP(&Flags.Threads, "threads", "j", runtime.NumCPU(), "number of threads to use for decompression (-1 to disable, default is cpu count)")
@@ -63,7 +68,7 @@ func VPK(name string) (tf2vpk.ValvePak, error) {
 // ArgVPK updates cmd to use the vpk name/path as the first mandatory argument,
 // validating it and registering completions.
 //
-// Also sets the command group.
+// Also sets the command group if not set.
 //
 // If i is positive, it completes arguments after (one or multi) it with names
 // from the VPK (these are not validated).
@@ -79,8 +84,10 @@ func ArgVPK(out *tf2vpk.ValvePak, cmd *cobra.Command, i int, multi, dirs, files 
 		}
 	}
 
-	// set the command group
-	cmd.GroupID = GroupVPK.ID
+	// set the command group if not set
+	if cmd.GroupID == "" {
+		cmd.GroupID = GroupVPK.ID
+	}
 
 	// add the argument validation/parsing
 	args := func(cmd *cobra.Command, args []string) error {
