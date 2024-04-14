@@ -3,9 +3,9 @@ package cmd
 import (
 	"github.com/pg9182/tf2vpk/cmd/root"
 
-	_ "github.com/pg9182/tf2vpk/cmd/cat"
 	_ "github.com/pg9182/tf2vpk/cmd/chflg"
 	_ "github.com/pg9182/tf2vpk/cmd/filter"
+	_ "github.com/pg9182/tf2vpk/cmd/get"
 	_ "github.com/pg9182/tf2vpk/cmd/init"
 	_ "github.com/pg9182/tf2vpk/cmd/list"
 	_ "github.com/pg9182/tf2vpk/cmd/lzham"

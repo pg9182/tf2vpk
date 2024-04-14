@@ -1,4 +1,4 @@
-package cat
+package get
 
 import (
 	"fmt"
@@ -18,8 +18,9 @@ var Flags struct {
 
 var Command = &cobra.Command{
 	GroupID: root.GroupVPKRead.ID,
-	Use:     "cat vpk_path file...",
-	Short:   "Prints files from a VPK to stdout",
+	Use:     "get vpk_path file...",
+	Aliases: []string{"cat"},
+	Short:   "Reads files from a VPK to stdout",
 	Args:    cobra.MinimumNArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		Flags.Files = args[1:]
