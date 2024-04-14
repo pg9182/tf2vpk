@@ -375,7 +375,8 @@ func (f *ValvePakFile) CreateReader(r io.ReaderAt) (io.Reader, error) {
 }
 
 // CreateReaderParallel is like CreateReader, but decompresses chunks in
-// parallel using n goroutines going no more than n compressed chunks ahead.
+// parallel using n-1 goroutines going no more than n compressed chunks ahead
+// (i.e., 1 is not parallel).
 func (f *ValvePakFile) CreateReaderParallel(r io.ReaderAt, n int) (io.Reader, error) {
 	rs := make([]io.Reader, len(f.Chunk))
 	var sz uint64
@@ -387,7 +388,7 @@ func (f *ValvePakFile) CreateReaderParallel(r io.ReaderAt, n int) (io.Reader, er
 		}
 		sz += c.UncompressedSize
 	}
-	return newCRCReader(newMultiChunkReader(n, rs...), sz, f.CRC32), nil
+	return newCRCReader(newMultiChunkReader(n-1, rs...), sz, f.CRC32), nil
 }
 
 type multiChunkReader struct {
