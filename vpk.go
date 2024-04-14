@@ -681,9 +681,7 @@ func (c ValvePakChunk) CreateReaderRaw(r io.ReaderAt) (io.Reader, error) {
 // Deserialize parses a ValvePakChunk from r.
 func (c *ValvePakChunk) Deserialize(r io.Reader) error {
 	if err := binary.Read(r, binary.LittleEndian, &c.LoadFlags); err != nil {
-		return fmt.Errorf("read chunk flags: %w", err)
-	} else if c.LoadFlags == 0 {
-		return fmt.Errorf("read chunk flags: must be non-zero")
+		return fmt.Errorf("read chunk entry flags: %w", err)
 	}
 	if err := binary.Read(r, binary.LittleEndian, &c.TextureFlags); err != nil {
 		return fmt.Errorf("read chunk texture flags: %w", err)
@@ -706,10 +704,8 @@ func (c *ValvePakChunk) Deserialize(r io.Reader) error {
 
 // Serialize writes an encoded ValvePakChunk to w.
 func (c ValvePakChunk) Serialize(w io.Writer) error {
-	if c.LoadFlags == 0 {
-		return fmt.Errorf("write chunk flags: must be non-zero")
-	} else if err := binary.Write(w, binary.LittleEndian, &c.LoadFlags); err != nil {
-		return fmt.Errorf("write chunk flags: %w", err)
+	if err := binary.Write(w, binary.LittleEndian, &c.LoadFlags); err != nil {
+		return fmt.Errorf("write chunk entry flags: %w", err)
 	}
 	if err := binary.Write(w, binary.LittleEndian, c.TextureFlags); err != nil {
 		return fmt.Errorf("write chunk texture flags: %w", err)
