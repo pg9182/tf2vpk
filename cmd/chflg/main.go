@@ -25,6 +25,7 @@ var Flags struct {
 var Command = &cobra.Command{
 	GroupID: root.GroupVPKWrite.ID,
 	Use:     "chflg vpk_path { load_flags:texture_flags | @reference_file } file...",
+	Aliases: []string{"chflag", "chflags"},
 	Short:   "Sets flags for VPK entries",
 	Long: `Sets flags for VPK entries
 
