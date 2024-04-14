@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"os"
 	"path"
 	"sort"
 	"strings"
@@ -19,14 +20,23 @@ type Reader struct {
 }
 
 // NewReader creates a new Reader reading from vpk.
-func NewReader(vpk ValvePak) (*Reader, error) {
+func NewReader(vpk ValvePakRef) (*Reader, error) {
+	return NewReaderFunc(func(i ValvePakIndex) (io.ReaderAt, error) {
+		return os.Open(vpk.Resolve(i))
+	})
+}
+
+// NewReaderFunc creates a new Reader reading using the provided function. If
+// the returned [io.ReaderAt] implements [io.Closer], it will be called when the
+// Reader is closed.
+func NewReaderFunc(open func(ValvePakIndex) (io.ReaderAt, error)) (*Reader, error) {
 	r := &Reader{
 		block: map[ValvePakIndex]io.ReaderAt{},
 		close: map[ValvePakIndex]io.Closer{},
 	}
 
 	// read dir index
-	dir, err := vpk.Open(ValvePakIndexDir)
+	dir, err := open(ValvePakIndexDir)
 	if err != nil {
 		return nil, fmt.Errorf("open vpk dir index: %w", err)
 	}
@@ -48,7 +58,7 @@ func NewReader(vpk ValvePak) (*Reader, error) {
 	var errs []error
 	for _, b := range r.Root.File {
 		if _, ok := r.block[b.Index]; !ok {
-			if x, err := vpk.Open(b.Index); err != nil {
+			if x, err := open(b.Index); err != nil {
 				errs = append(errs, fmt.Errorf("open vpk block %s: %w", b.Index, err))
 			} else {
 				if x, ok := x.(io.Closer); ok {

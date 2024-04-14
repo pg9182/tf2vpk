@@ -56,15 +56,19 @@ func init() {
 }
 
 // VPK resolves the provided name to a VPK.
-func VPK(name string) (tf2vpk.ValvePak, error) {
+func VPK(name string) (tf2vpk.ValvePakRef, error) {
 	if Flags.VPKDir != "" {
 		if name == "" {
-			return nil, fmt.Errorf("invalid vpk name %q", name)
+			return tf2vpk.ValvePakRef{}, fmt.Errorf("invalid vpk name %q", name)
 		}
-		return tf2vpk.VPK(Flags.VPKDir, Flags.VPKPrefix, name), nil
+		return tf2vpk.ValvePakRef{
+			Path:   Flags.VPKDir,
+			Prefix: Flags.VPKPrefix,
+			Name:   name,
+		}, nil
 	}
-	if vpk, err := tf2vpk.VPKFromPath(name, Flags.VPKPrefix); err != nil {
-		return nil, fmt.Errorf("invalid vpk path %q: %w", name, err)
+	if vpk, err := tf2vpk.PathToValvePakRef(name, Flags.VPKPrefix); err != nil {
+		return tf2vpk.ValvePakRef{}, fmt.Errorf("invalid vpk path %q: %w", name, err)
 	} else {
 		return vpk, nil
 	}
@@ -75,7 +79,7 @@ func VPK(name string) (tf2vpk.ValvePak, error) {
 //
 // If i is positive, it completes arguments after (one or multi) it with names
 // from the VPK (these are not validated).
-func ArgVPK(out *tf2vpk.ValvePak, cmd *cobra.Command, i int, multi, dirs, files bool) {
+func ArgVPK(out *tf2vpk.ValvePakRef, cmd *cobra.Command, i int, multi, dirs, files bool) {
 	if i == 0 {
 		panic("file arg index must not be zero")
 	}
@@ -132,13 +136,11 @@ func ArgVPK(out *tf2vpk.ValvePak, cmd *cobra.Command, i int, multi, dirs, files 
 				return nil, cobra.ShellCompDirectiveError
 			}
 
-			r, err := vpk.Open(tf2vpk.ValvePakIndexDir)
+			r, err := os.Open(vpk.Resolve(tf2vpk.ValvePakIndexDir))
 			if err != nil {
 				return nil, cobra.ShellCompDirectiveError
 			}
-			if c, ok := r.(io.Closer); ok {
-				defer c.Close()
-			}
+			defer r.Close()
 
 			var root tf2vpk.ValvePakDir
 			if err := root.Deserialize(io.NewSectionReader(r, 0, 1<<63-1)); err != nil {

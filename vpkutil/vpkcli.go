@@ -99,14 +99,14 @@ func (ro CLIResolveOpen) ArgCheck() bool {
 }
 
 // Resolve resolves the VPK path.
-func (ro CLIResolveOpen) Resolve() (vpk tf2vpk.ValvePak, err error) {
+func (ro CLIResolveOpen) Resolve() (vpk tf2vpk.ValvePakRef, err error) {
 	args := ro.set.Args()
 	args = args[min(len(args), ro.Arg):]
 	switch len(args) {
 	case 2:
-		vpk, err = tf2vpk.VPK(args[0], *ro.VPKPrefix, args[1]), nil
+		vpk, err = tf2vpk.ValvePakRef{Path: args[0], Prefix: *ro.VPKPrefix, Name: args[1]}, nil
 	case 1:
-		vpk, err = tf2vpk.VPKFromPath(args[0], *ro.VPKPrefix)
+		vpk, err = tf2vpk.PathToValvePakRef(args[0], *ro.VPKPrefix)
 	default:
 		if len(args) != 0 || !ro.Optional {
 			panic("invalid argument count, expected last arguments to be (vpk_dir vpk_name)|vpk_path")
@@ -120,9 +120,9 @@ func (ro CLIResolveOpen) Resolve() (vpk tf2vpk.ValvePak, err error) {
 }
 
 // ResolveOpen resolves the VPK path and opens a reader.
-func (ro CLIResolveOpen) ResolveOpen() (vpk tf2vpk.ValvePak, r *tf2vpk.Reader, err error) {
+func (ro CLIResolveOpen) ResolveOpen() (vpk tf2vpk.ValvePakRef, r *tf2vpk.Reader, err error) {
 	vpk, err = ro.Resolve()
-	if err == nil && vpk != nil {
+	if err == nil && vpk != (tf2vpk.ValvePakRef{}) {
 		if r, err = tf2vpk.NewReader(vpk); err != nil {
 			err = fmt.Errorf("open vpk: %w", err)
 		}

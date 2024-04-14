@@ -3,7 +3,6 @@ package tf2vpk
 import (
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -60,58 +59,31 @@ func SplitName(fn, prefix string) (name string, idx ValvePakIndex, err error) {
 	return name, idx, nil
 }
 
-// ValvePak provides access to VPK files.
-type ValvePak interface {
-	// Open opens a reader for the provided index. It may also implement
-	// io.Closer (this should be checked by the caller).
-	Open(ValvePakIndex) (io.ReaderAt, error)
-
-	// Create opens a writer writing to the provided index, truncating it if it
-	// exists. It may also implement io.Closer (this should be checked by the
-	// caller).
-	Create(ValvePakIndex) (io.Writer, error)
-
-	// Delete deletes all files associated with the VPK. If no files exist, nil
-	// is returned.
-	Delete() error
-}
-
-// VPK returns a ValvePak reading the provided path/prefix/name. It may or may
-// not exist.
-func VPK(path, prefix, name string) ValvePak {
-	if path == "" {
-		path = "."
-	} else {
-		path = filepath.FromSlash(path)
-	}
-	if name == "" {
-		panic("vpk name is required")
-	}
-	return vpk{
-		Path:   path,
-		Prefix: prefix,
-		Name:   name,
-	}
-}
-
-// VPKFromPath attempts to return a ValvePak from the provided path. It may or
-// may not exist.
-func VPKFromPath(filename, prefix string) (ValvePak, error) {
+// PathToValvePakRef attempts to return a ValvePak from the provided path. It
+// may or may not exist.
+func PathToValvePakRef(filename, prefix string) (ValvePakRef, error) {
 	path, fn := filepath.Split(filepath.FromSlash(filename))
 	name, _, err := SplitName(fn, prefix)
 	if err != nil {
-		return nil, err
+		return ValvePakRef{}, err
 	}
-	return VPK(path, prefix, name), nil
+	return ValvePakRef{path, prefix, name}, nil
 }
 
-type vpk struct {
+// ValvePakRef references a VPK from the filesystem.
+type ValvePakRef struct {
 	Path   string
 	Prefix string
 	Name   string
 }
 
-func (v vpk) Resolve(i ValvePakIndex) string {
+func (v ValvePakRef) Resolve(i ValvePakIndex) string {
+	if v.Path == "" {
+		v.Path = "."
+	}
+	if v.Name == "" {
+		panic("vpk name is required")
+	}
 	var fn string
 	if i == ValvePakIndexDir {
 		fn = v.Prefix
@@ -120,15 +92,13 @@ func (v vpk) Resolve(i ValvePakIndex) string {
 	return filepath.Join(v.Path, fn)
 }
 
-func (v vpk) Open(i ValvePakIndex) (io.ReaderAt, error) {
-	return os.Open(v.Resolve(i))
-}
-
-func (v vpk) Create(i ValvePakIndex) (io.Writer, error) {
-	return os.Create(v.Resolve(i))
-}
-
-func (v vpk) Delete() error {
+func (v ValvePakRef) Delete() error {
+	if v.Path == "" {
+		v.Path = "."
+	}
+	if v.Name == "" {
+		panic("vpk name is required")
+	}
 	ds, err := os.ReadDir(v.Path)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {

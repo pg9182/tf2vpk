@@ -20,7 +20,7 @@ var ZipCommand = command("zip")
 func command(format string) *cobra.Command {
 	var main func()
 	var Flags struct {
-		VPK            tf2vpk.ValvePak
+		VPK            tf2vpk.ValvePakRef
 		IncludeExclude func(tf2vpk.ValvePakFile) (bool, error)
 		Output         string
 		Chunks         bool

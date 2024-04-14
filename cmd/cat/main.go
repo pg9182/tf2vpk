@@ -12,7 +12,7 @@ import (
 )
 
 var Flags struct {
-	VPK   tf2vpk.ValvePak
+	VPK   tf2vpk.ValvePakRef
 	Files []string
 }
 

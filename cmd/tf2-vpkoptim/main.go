@@ -132,7 +132,7 @@ func main() {
 func optimize(ctx context.Context, inputDir, outputDir, vpkName string) error {
 	vlog(VStatus, "optimizing %s", filepath.Base(vpkName))
 
-	vpk := tf2vpk.VPK(inputDir, *VPKPrefix, vpkName)
+	vpk := tf2vpk.ValvePakRef{Path: inputDir, Prefix: *VPKPrefix, Name: vpkName}
 
 	r, err := tf2vpk.NewReader(vpk)
 	if err != nil {
