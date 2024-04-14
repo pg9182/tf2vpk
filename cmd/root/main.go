@@ -22,7 +22,7 @@ var Flags struct {
 
 var Command = &cobra.Command{
 	Use:   "tf2vpk",
-	Short: "Manipulates Respawn VPK archives.",
+	Short: "Manipulates Respawn VPK archives",
 	PreRun: func(cmd *cobra.Command, args []string) {
 		if Flags.Threads < 0 {
 			Flags.Threads = 0

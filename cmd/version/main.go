@@ -16,7 +16,7 @@ var Flags struct {
 
 var Command = &cobra.Command{
 	Use:   "version",
-	Short: "Print the current version.",
+	Short: "Print the current version",
 	Run: func(cmd *cobra.Command, args []string) {
 		main()
 	},

@@ -19,7 +19,7 @@ var Flags struct {
 
 var Command = &cobra.Command{
 	Use:   "init [out_path]",
-	Short: "Initializes vpkflags and vpkignore so a directory can be packed.",
+	Short: "Initializes vpkflags and vpkignore so a directory can be packed",
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {

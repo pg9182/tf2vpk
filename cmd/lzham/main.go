@@ -27,7 +27,7 @@ var Flags struct {
 
 var Command = &cobra.Command{
 	Use:   "lzham [file...]",
-	Short: "Compresses or uncompress lzham files.",
+	Short: "Compresses or uncompress lzham files",
 	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if Flags.Decompress {
 			return []string{strings.TrimPrefix(ext, ".")}, cobra.ShellCompDirectiveFilterFileExt

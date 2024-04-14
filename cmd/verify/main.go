@@ -17,7 +17,7 @@ var Flags struct {
 
 var Command = &cobra.Command{
 	Use:   "verify vpk_path",
-	Short: "Verifies the contents of a VPK.",
+	Short: "Verifies the contents of a VPK",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		main()
