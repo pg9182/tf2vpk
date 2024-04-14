@@ -1,9 +1,7 @@
 package tf2vpk
 
 import (
-	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -92,7 +90,7 @@ func (v ValvePakRef) Resolve(i ValvePakIndex) string {
 	return filepath.Join(v.Path, fn)
 }
 
-func (v ValvePakRef) Delete() error {
+func (v ValvePakRef) List() ([]string, error) {
 	if v.Path == "" {
 		v.Path = "."
 	}
@@ -101,30 +99,14 @@ func (v ValvePakRef) Delete() error {
 	}
 	ds, err := os.ReadDir(v.Path)
 	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			err = nil
-		}
-		return err
+		return nil, err
 	}
-
-	var errs []error
+	var ns []string
 	for _, d := range ds {
 		// ensure it's a vpk file belonging to us
-		name, _, err := SplitName(d.Name(), v.Prefix)
-		if err != nil || name != v.Name {
-			continue
-		}
-
-		// try and remove it
-		if err := os.Remove(filepath.Join(v.Path, d.Name())); err != nil {
-			if errors.Is(err, fs.ErrNotExist) {
-				err = nil
-			}
-			errs = append(errs, err)
+		if name, _, err := SplitName(d.Name(), v.Prefix); err == nil && name == v.Name {
+			ns = append(ns, d.Name())
 		}
 	}
-	if err := errors.Join(errs...); err != nil {
-		return fmt.Errorf("delete vpk: %w", err)
-	}
-	return nil
+	return ns, nil
 }
