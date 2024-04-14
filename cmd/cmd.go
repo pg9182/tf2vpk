@@ -7,6 +7,7 @@ import (
 	_ "github.com/pg9182/tf2vpk/cmd/lzham"
 	_ "github.com/pg9182/tf2vpk/cmd/verify"
 	_ "github.com/pg9182/tf2vpk/cmd/version"
+	_ "github.com/pg9182/tf2vpk/cmd/vpkflags"
 )
 
 func Execute() {
