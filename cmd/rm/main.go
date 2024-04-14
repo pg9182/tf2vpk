@@ -26,7 +26,11 @@ var Command = &cobra.Command{
 	Use:     "rm vpk_path file...",
 	Aliases: []string{"remove", "delete", "del"},
 	Short:   "Delete files or directories from a VPK",
-	Args:    cobra.MinimumNArgs(2),
+	Long: `Delete files or directories from a VPK
+
+Does not remove the unused chunks; use the gc command to do that afterwards.
+`,
+	Args: cobra.MinimumNArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		Flags.Files = args[1:]
 		main()
