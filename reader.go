@@ -92,7 +92,12 @@ func (r *Reader) OpenFileParallel(f ValvePakFile, n int) (io.Reader, error) {
 	return f.CreateReaderParallel(r.block[f.Index], n)
 }
 
-// OpenChunkRaw returns a new reader reading the contents of a specific chunk.
+// OpenChunk returns a new reader reading the contents of a specific chunk.
+func (r *Reader) OpenChunk(f ValvePakFile, c ValvePakChunk) (io.Reader, error) {
+	return c.CreateReader(r.block[f.Index])
+}
+
+// OpenChunkRaw returns a new reader reading the raw contents of a specific chunk.
 func (r *Reader) OpenChunkRaw(f ValvePakFile, c ValvePakChunk) (io.Reader, error) {
 	return c.CreateReaderRaw(r.block[f.Index])
 }
