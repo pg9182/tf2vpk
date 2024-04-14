@@ -10,6 +10,7 @@ import (
 	_ "github.com/pg9182/tf2vpk/cmd/list"
 	_ "github.com/pg9182/tf2vpk/cmd/lzham"
 	_ "github.com/pg9182/tf2vpk/cmd/tarzip"
+	_ "github.com/pg9182/tf2vpk/cmd/unpack"
 	_ "github.com/pg9182/tf2vpk/cmd/verify"
 	_ "github.com/pg9182/tf2vpk/cmd/version"
 	_ "github.com/pg9182/tf2vpk/cmd/vpkflags"
