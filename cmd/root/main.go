@@ -131,55 +131,7 @@ func ArgVPK(out *tf2vpk.ValvePakRef, cmd *cobra.Command, i int, multi, dirs, fil
 			return ns, cobra.ShellCompDirectiveNoFileComp
 		}
 		if i > 0 && len(args) >= i && (multi || len(args) == i) {
-			vpk, err := VPK(args[0])
-			if err != nil {
-				return nil, cobra.ShellCompDirectiveError
-			}
-
-			r, err := os.Open(vpk.Resolve(tf2vpk.ValvePakIndexDir))
-			if err != nil {
-				return nil, cobra.ShellCompDirectiveError
-			}
-			defer r.Close()
-
-			var root tf2vpk.ValvePakDir
-			if err := root.Deserialize(io.NewSectionReader(r, 0, 1<<63-1)); err != nil {
-				return nil, cobra.ShellCompDirectiveError
-			}
-
-			var (
-				cs []string
-				ds = map[string]struct{}{}
-			)
-			for _, f := range root.File {
-				if files {
-					if strings.HasPrefix(f.Path, toComplete) {
-						cs = append(cs, f.Path)
-					}
-				}
-				if dirs {
-				d:
-					for d := f.Path; d != ""; {
-						d = path.Dir(d)
-						if d == "." {
-							d = ""
-						}
-						if _, ok := ds[d]; ok {
-							continue d
-						}
-						ds[d] = struct{}{}
-					}
-				}
-			}
-			if dirs {
-				for d := range ds {
-					cs = append(cs, d+"/")
-				}
-			}
-
-			slices.Sort(cs)
-			cs = slices.Compact(cs)
-			return cs, cobra.ShellCompDirectiveNoFileComp
+			return ArgVPKFileCompletions(args, toComplete, dirs, files)
 		}
 		return nil, cobra.ShellCompDirectiveDefault
 	}, cmd.ValidArgsFunction; next != nil {
@@ -192,6 +144,59 @@ func ArgVPK(out *tf2vpk.ValvePakRef, cmd *cobra.Command, i int, multi, dirs, fil
 	} else {
 		cmd.ValidArgsFunction = validArgsFunction
 	}
+}
+
+// ArgVPKFileCompletions returns file completions for a VPK.
+func ArgVPKFileCompletions(args []string, toComplete string, dirs, files bool) ([]string, cobra.ShellCompDirective) {
+	vpk, err := VPK(args[0])
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+
+	r, err := os.Open(vpk.Resolve(tf2vpk.ValvePakIndexDir))
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	defer r.Close()
+
+	var root tf2vpk.ValvePakDir
+	if err := root.Deserialize(io.NewSectionReader(r, 0, 1<<63-1)); err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+
+	var (
+		cs []string
+		ds = map[string]struct{}{}
+	)
+	for _, f := range root.File {
+		if files {
+			if strings.HasPrefix(f.Path, toComplete) {
+				cs = append(cs, f.Path)
+			}
+		}
+		if dirs {
+		d:
+			for d := f.Path; d != ""; {
+				d = path.Dir(d)
+				if d == "." {
+					d = ""
+				}
+				if _, ok := ds[d]; ok {
+					continue d
+				}
+				ds[d] = struct{}{}
+			}
+		}
+	}
+	if dirs {
+		for d := range ds {
+			cs = append(cs, d+"/")
+		}
+	}
+
+	slices.Sort(cs)
+	cs = slices.Compact(cs)
+	return cs, cobra.ShellCompDirectiveNoFileComp
 }
 
 // FlagIncludeExclude adds --exclude and --include flags, returning a function
