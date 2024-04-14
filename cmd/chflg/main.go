@@ -3,7 +3,6 @@ package cat
 import (
 	"encoding/binary"
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
 	"strconv"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/pg9182/tf2vpk"
 	"github.com/pg9182/tf2vpk/cmd/root"
+	"github.com/pg9182/tf2vpk/vpkutil"
 	"github.com/spf13/cobra"
 )
 
@@ -60,104 +60,88 @@ func init() {
 }
 
 func main() {
-	openFlag := os.O_RDWR
-	if Flags.DryRun {
-		openFlag = os.O_RDONLY
-	}
-
-	f, err := os.OpenFile(Flags.VPK.Resolve(tf2vpk.ValvePakIndexDir), openFlag, 0)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: open vpk dir index: %v\n", err)
-		os.Exit(1)
-	}
-	defer f.Close()
-
-	var root tf2vpk.ValvePakDir
-	if err := root.Deserialize(io.NewSectionReader(f, 0, 1<<63-1)); err != nil {
-		fmt.Fprintf(os.Stderr, "error: read vpk dir index: %v\n", err)
-		os.Exit(1)
-	}
-
-	var (
-		loadFlags    uint32
-		textureFlags uint16
-	)
-	if p, ok := strings.CutPrefix(Flags.Flags, "@"); ok {
-		var found bool
-		for _, f := range root.File {
-			if f.Path == strings.TrimPrefix(p, "/") {
-				if loadFlags, err = f.LoadFlags(); err != nil {
-					fmt.Fprintf(os.Stderr, "error: failed to compute load flags for reference file %q: %v\n", p, err)
-					os.Exit(1)
-				}
-				if textureFlags, err = f.TextureFlags(); err != nil {
-					fmt.Fprintf(os.Stderr, "error: failed to compute texture flags for reference file %q: %v\n", p, err)
-					os.Exit(1)
-				}
-				found = true
-				break
-			}
-		}
-		if !found {
-			fmt.Fprintf(os.Stderr, "error: reference file %q does not exist in vpk\n", p)
-			os.Exit(1)
-		}
-	} else {
-		load, texture, ok := strings.Cut(Flags.Flags, ":")
-		if !ok {
-			fmt.Fprintf(os.Stderr, "error: invalid flags %q: expected load and texture flags separated by a colon\n", Flags.Flags)
-			os.Exit(1)
-		}
-		loadFlags, err = parseFlag[uint32](load)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error: invalid flags %q: parse load flags: %v\n", Flags.Flags, err)
-			os.Exit(1)
-		}
-		textureFlags, err = parseFlag[uint16](texture)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error: invalid flags %q: parse texture flags: %v\n", Flags.Flags, err)
-			os.Exit(1)
-		}
-	}
-
 	var failed int
-	for _, name := range Flags.Files {
-		if err := func() error {
-			var matched bool
-			for i, f := range root.File {
-				if name == "/" || strings.HasPrefix(f.Path+"/", name+"/") {
-					loadFlagsOrig, _ := f.LoadFlags()
-					textureFlagsOrig, _ := f.TextureFlags()
-					for j := range f.Chunk {
-						root.File[i].Chunk[j].LoadFlags = loadFlags
-						root.File[i].Chunk[j].TextureFlags = textureFlags
+	if err := vpkutil.UpdateDir(Flags.VPK, Flags.DryRun, func(root *tf2vpk.ValvePakDir) error {
+		var (
+			err          error
+			loadFlags    uint32
+			textureFlags uint16
+		)
+		if p, ok := strings.CutPrefix(Flags.Flags, "@"); ok {
+			var found bool
+			for _, f := range root.File {
+				if f.Path == strings.TrimPrefix(p, "/") {
+					if loadFlags, err = f.LoadFlags(); err != nil {
+						fmt.Fprintf(os.Stderr, "error: failed to compute load flags for reference file %q: %v\n", p, err)
+						os.Exit(1)
 					}
-					if Flags.Verbose {
-						var what string
-						if loadFlagsOrig != loadFlags || textureFlagsOrig != textureFlags {
-							what = "set flags to"
-						} else {
-							what = "retained flags"
-						}
-						fmt.Printf("%s: %s 0x%08X:0x%04X (load=%s texture=%s)\n", f.Path, what, loadFlags, textureFlags, tf2vpk.DescribeLoadFlags(loadFlags), tf2vpk.DescribeTextureFlags(textureFlags))
+					if textureFlags, err = f.TextureFlags(); err != nil {
+						fmt.Fprintf(os.Stderr, "error: failed to compute texture flags for reference file %q: %v\n", p, err)
+						os.Exit(1)
 					}
-					matched = true
+					found = true
+					break
 				}
 			}
-			if !matched {
-				return fs.ErrNotExist
+			if !found {
+				fmt.Fprintf(os.Stderr, "error: reference file %q does not exist in vpk\n", p)
+				os.Exit(1)
 			}
-			return nil
-		}(); err != nil {
-			fmt.Fprintf(os.Stderr, "error: set flags for file %q: %v\n", name, err)
-			failed++
+		} else {
+			load, texture, ok := strings.Cut(Flags.Flags, ":")
+			if !ok {
+				fmt.Fprintf(os.Stderr, "error: invalid flags %q: expected load and texture flags separated by a colon\n", Flags.Flags)
+				os.Exit(1)
+			}
+			loadFlags, err = parseFlag[uint32](load)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: invalid flags %q: parse load flags: %v\n", Flags.Flags, err)
+				os.Exit(1)
+			}
+			textureFlags, err = parseFlag[uint16](texture)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: invalid flags %q: parse texture flags: %v\n", Flags.Flags, err)
+				os.Exit(1)
+			}
 		}
-	}
-	if !Flags.DryRun {
-		if err := root.Serialize(io.NewOffsetWriter(f, 0)); err != nil { // note: this is fine since the length doesn't change
-			fmt.Fprintf(os.Stderr, "error: write vpk dir index: %v\n", err)
-			os.Exit(1)
+
+		for _, name := range Flags.Files {
+			if err := func() error {
+				var matched bool
+				for i, f := range root.File {
+					if name == "/" || strings.HasPrefix(f.Path+"/", name+"/") {
+						loadFlagsOrig, _ := f.LoadFlags()
+						textureFlagsOrig, _ := f.TextureFlags()
+						for j := range f.Chunk {
+							root.File[i].Chunk[j].LoadFlags = loadFlags
+							root.File[i].Chunk[j].TextureFlags = textureFlags
+						}
+						if Flags.Verbose {
+							var what string
+							if loadFlagsOrig != loadFlags || textureFlagsOrig != textureFlags {
+								what = "set flags to"
+							} else {
+								what = "retained flags"
+							}
+							fmt.Printf("%s: %s 0x%08X:0x%04X (load=%s texture=%s)\n", f.Path, what, loadFlags, textureFlags, tf2vpk.DescribeLoadFlags(loadFlags), tf2vpk.DescribeTextureFlags(textureFlags))
+						}
+						matched = true
+					}
+				}
+				if !matched {
+					return fs.ErrNotExist
+				}
+				return nil
+			}(); err != nil {
+				fmt.Fprintf(os.Stderr, "error: set flags for file %q: %v\n", name, err)
+				failed++
+			}
 		}
+
+		return nil
+	}); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
 	}
 	if failed != 0 {
 		os.Exit(1)
