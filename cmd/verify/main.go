@@ -12,16 +12,14 @@ import (
 
 var Flags struct {
 	VPK     tf2vpk.ValvePak
-	Files   []string
 	Verbose bool
 }
 
 var Command = &cobra.Command{
 	Use:   "verify vpk_path",
 	Short: "Verifies the contents of a VPK.",
-	Args:  cobra.MinimumNArgs(1),
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		Flags.Files = args[1:]
 		main()
 	},
 }
