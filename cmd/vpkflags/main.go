@@ -16,13 +16,13 @@ var Flags struct {
 }
 
 var Command = &cobra.Command{
-	Use:   "vpkflags vpk_path",
-	Short: "Generates a vpkflags file based on an existing VPK",
-	Args:  cobra.ExactArgs(1),
+	GroupID: root.GroupVPKRepack.ID,
+	Use:     "vpkflags vpk_path",
+	Short:   "Generates a vpkflags file based on an existing VPK",
+	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		main()
 	},
-	GroupID: root.GroupVPKRepacking.ID,
 }
 
 func init() {

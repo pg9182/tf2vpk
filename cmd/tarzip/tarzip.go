@@ -28,9 +28,10 @@ func command(format string) *cobra.Command {
 		Verbose        bool
 	}
 	var Command = &cobra.Command{
-		Use:   format + " vpk_path",
-		Short: "Streams the contents of VPK as a " + format + " archive",
-		Args:  cobra.ExactArgs(1),
+		GroupID: root.GroupVPKRead.ID,
+		Use:     format + " vpk_path",
+		Short:   "Streams the contents of VPK as a " + format + " archive",
+		Args:    cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			main()
 		},

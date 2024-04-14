@@ -17,9 +17,10 @@ var Flags struct {
 }
 
 var Command = &cobra.Command{
-	Use:   "cat vpk_path file...",
-	Short: "Prints files from a VPK to stdout",
-	Args:  cobra.MinimumNArgs(2),
+	GroupID: root.GroupVPKRead.ID,
+	Use:     "cat vpk_path file...",
+	Short:   "Prints files from a VPK to stdout",
+	Args:    cobra.MinimumNArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		Flags.Files = args[1:]
 		main()
