@@ -89,19 +89,9 @@ func main() {
 				os.Exit(1)
 			}
 		} else {
-			load, texture, ok := strings.Cut(Flags.Flags, ":")
-			if !ok {
-				fmt.Fprintf(os.Stderr, "error: invalid flags %q: expected load and texture flags separated by a colon\n", Flags.Flags)
-				os.Exit(1)
-			}
-			loadFlags, err = parseFlag[uint32](load)
+			loadFlags, textureFlags, err = parseFlags(Flags.Flags)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: invalid flags %q: parse load flags: %v\n", Flags.Flags, err)
-				os.Exit(1)
-			}
-			textureFlags, err = parseFlag[uint16](texture)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: invalid flags %q: parse texture flags: %v\n", Flags.Flags, err)
+				fmt.Fprintf(os.Stderr, "error: invalid flags %q: %v\n", Flags.Flags, err)
 				os.Exit(1)
 			}
 		}
@@ -147,6 +137,22 @@ func main() {
 	if failed != 0 {
 		os.Exit(1)
 	}
+}
+
+func parseFlags(s string) (uint32, uint16, error) {
+	load, texture, ok := strings.Cut(s, ":")
+	if !ok {
+		return 0, 0, fmt.Errorf("expected load and texture flags separated by a colon")
+	}
+	loadFlags, err := parseFlag[uint32](load)
+	if err != nil {
+		return 0, 0, fmt.Errorf("parse load flags: %v", err)
+	}
+	textureFlags, err := parseFlag[uint16](texture)
+	if err != nil {
+		return 0, 0, fmt.Errorf("parse texture flags: %v", err)
+	}
+	return loadFlags, textureFlags, nil
 }
 
 func parseFlag[T uint16 | uint32](s string) (T, error) {
