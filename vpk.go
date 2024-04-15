@@ -470,9 +470,6 @@ func (f *ValvePakFile) Deserialize(r io.Reader, path string) error {
 		f.Chunk = append(f.Chunk, e)
 
 		// assumptions based on observation
-		if f.Path != "" && e.TextureFlags != 0 && !strings.HasSuffix(f.Path, ".vtf") {
-			return fmt.Errorf("read file chunk: expected non-vtf to not have texture flags")
-		}
 		if e.LoadFlags != f.Chunk[0].LoadFlags {
 			return fmt.Errorf("read file chunk: expected load flags to be the same for all chunks")
 		}
