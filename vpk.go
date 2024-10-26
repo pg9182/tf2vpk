@@ -508,9 +508,6 @@ func (f ValvePakFile) Serialize(w io.Writer) error {
 	}
 	for i, e := range f.Chunk {
 		// assumptions based on observation
-		if f.Path != "" && e.TextureFlags != 0 && !strings.HasSuffix(f.Path, ".vtf") {
-			return fmt.Errorf("write file chunk: expected non-vtf to not have texture flags")
-		}
 		if e.LoadFlags != f.Chunk[0].LoadFlags {
 			return fmt.Errorf("write file chunk: expected load flags to be the same for all chunks")
 		}
@@ -688,13 +685,9 @@ func (c *ValvePakChunk) Deserialize(r io.Reader) error {
 	}
 	if err := binary.Read(r, binary.LittleEndian, &c.CompressedSize); err != nil {
 		return fmt.Errorf("read chunk compressed size: %w", err)
-	} else if c.CompressedSize == 0 {
-		return fmt.Errorf("read chunk compressed size: must be non-zero")
 	}
 	if err := binary.Read(r, binary.LittleEndian, &c.UncompressedSize); err != nil {
 		return fmt.Errorf("read chunk uncompressed size: %w", err)
-	} else if c.UncompressedSize == 0 {
-		return fmt.Errorf("read chunk uncompressed size: must be non-zero")
 	}
 	return nil
 }
@@ -710,14 +703,10 @@ func (c ValvePakChunk) Serialize(w io.Writer) error {
 	if err := binary.Write(w, binary.LittleEndian, c.Offset); err != nil {
 		return fmt.Errorf("write chunk archive offset: %w", err)
 	}
-	if c.CompressedSize == 0 {
-		return fmt.Errorf("write chunk compressed size: must be non-zero")
-	} else if err := binary.Write(w, binary.LittleEndian, c.CompressedSize); err != nil {
+	 if err := binary.Write(w, binary.LittleEndian, c.CompressedSize); err != nil {
 		return fmt.Errorf("write chunk compressed size: %w", err)
 	}
-	if c.UncompressedSize == 0 {
-		return fmt.Errorf("write chunk uncompressed size: must be non-zero")
-	} else if err := binary.Write(w, binary.LittleEndian, c.UncompressedSize); err != nil {
+	if err := binary.Write(w, binary.LittleEndian, c.UncompressedSize); err != nil {
 		return fmt.Errorf("write chunk uncompressed size: %w", err)
 	}
 	return nil
