@@ -18,6 +18,7 @@ import (
 var Flags struct {
 	VPK              tf2vpk.ValvePakRef
 	Path             string
+	Force            bool
 	VPKFlagsExplicit bool
 	VPKIgnoreEmpty   bool
 	Verbose          bool
@@ -40,6 +41,7 @@ func init() {
 	Command.Flags().BoolVarP(&Flags.VPKFlagsExplicit, "explicit-vpkflags", "x", false, "do not compute inherited vpkflags; generate one line for each file")
 	Command.Flags().BoolVar(&Flags.VPKIgnoreEmpty, "empty-vpkignore", false, "do not add default vpkignore entires")
 	Command.Flags().BoolVarP(&Flags.Verbose, "verbose", "v", false, "display progress information")
+	Command.Flags().BoolVarP(&Flags.Force, "force", "f", false, "allow extracting over existing non-empty folder") // TODO: merge vpkflags
 	root.FlagIncludeExclude(&Flags.IncludeExclude, Command, true)
 	root.Command.AddCommand(Command)
 }
@@ -108,8 +110,15 @@ func main() {
 	} else {
 		for _, di := range dis {
 			if !vpkignore.Match(di.Name()) {
-				fmt.Fprintf(os.Stderr, "error: output directory must not exist or be empty (other than ignored files), found %q\n", di.Name())
-				os.Exit(1)
+				if Flags.Force {
+					if Flags.Verbose {
+						fmt.Printf("... directory is not empty, but --force is specified, so overwriting")
+					}
+					break
+				} else {
+					fmt.Fprintf(os.Stderr, "error: output directory must not exist or be empty (other than ignored files), found %q\n", di.Name())
+					os.Exit(1)
+				}
 			}
 		}
 	}
