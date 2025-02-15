@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -21,6 +22,22 @@ const (
 	ValvePakVersionMinor             uint16 = 3
 	ValvePakMaxChunkUncompressedSize uint64 = 0x100000
 )
+
+var (
+	debugDisableSanityChecks bool
+	debugDisableCRCChecks    bool
+)
+
+func init() {
+	for _, v := range strings.Split(os.Getenv("TF2VPKDEBUG"), ",") {
+		switch v {
+		case "nosanitycheck":
+			debugDisableSanityChecks = true
+		case "nocrccheck":
+			debugDisableCRCChecks = true
+		}
+	}
+}
 
 // ValvePakDir is the root directory of a Titanfall 2 VPK, providing
 // byte-for-byte identical serialization/deserialization and validation (it will
@@ -135,7 +152,7 @@ func (d ValvePakDir) Serialize(w io.Writer) error {
 	} else if err := binary.Write(w, binary.LittleEndian, &d.Magic); err != nil {
 		return fmt.Errorf("write dir magic: %w", err)
 	}
-	if d.MajorVersion != ValvePakVersionMajor || d.MinorVersion != ValvePakVersionMinor {
+	if !debugDisableSanityChecks && (d.MajorVersion != ValvePakVersionMajor || d.MinorVersion != ValvePakVersionMinor) {
 		return fmt.Errorf("unsupported dir version %d.%d (expected %d.%d)", d.MajorVersion, d.MinorVersion, ValvePakVersionMajor, ValvePakVersionMinor)
 	} else if err := binary.Write(w, binary.LittleEndian, &d.MajorVersion); err != nil {
 		return fmt.Errorf("write major version: %w", err)
@@ -508,16 +525,16 @@ func (f ValvePakFile) Serialize(w io.Writer) error {
 	}
 	for i, e := range f.Chunk {
 		// assumptions based on observation
-		if f.Path != "" && e.TextureFlags != 0 && !strings.HasSuffix(f.Path, ".vtf") && !strings.HasSuffix(f.Path, ".vvc") {
+		if !debugDisableSanityChecks && f.Path != "" && e.TextureFlags != 0 && !strings.HasSuffix(f.Path, ".vtf") && !strings.HasSuffix(f.Path, ".vvc") {
 			return fmt.Errorf("write file chunk: expected non-vtf/non-vvc to not have texture flags")
 		}
-		if e.LoadFlags != f.Chunk[0].LoadFlags {
+		if !debugDisableSanityChecks && e.LoadFlags != f.Chunk[0].LoadFlags {
 			return fmt.Errorf("write file chunk: expected load flags to be the same for all chunks")
 		}
-		if e.TextureFlags != f.Chunk[0].TextureFlags {
+		if !debugDisableSanityChecks && e.TextureFlags != f.Chunk[0].TextureFlags {
 			return fmt.Errorf("write file chunk: expected texture flags to be the same for all chunks")
 		}
-		if e.UncompressedSize > ValvePakMaxChunkUncompressedSize {
+		if !debugDisableSanityChecks && e.UncompressedSize > ValvePakMaxChunkUncompressedSize {
 			return fmt.Errorf("write file chunk: uncompressed size %d larger than %d", e.UncompressedSize, ValvePakMaxChunkUncompressedSize) // I'm not 100% sure about this limit
 		}
 

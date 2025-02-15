@@ -78,7 +78,7 @@ func (r *hashReader) Read(b []byte) (n int, err error) {
 		if r.n != r.sz {
 			return 0, io.ErrUnexpectedEOF
 		}
-		if r.crc != 0 && r.h.Sum32() != r.crc {
+		if r.crc != 0 && r.h.Sum32() != r.crc && !debugDisableCRCChecks {
 			err = fmt.Errorf("crc mismatch: expected %08X, got %08X", r.crc, r.h.Sum32())
 		}
 	}
