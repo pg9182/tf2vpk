@@ -525,8 +525,8 @@ func (f ValvePakFile) Serialize(w io.Writer) error {
 	}
 	for i, e := range f.Chunk {
 		// assumptions based on observation
-		if !debugDisableSanityChecks && f.Path != "" && e.TextureFlags != 0 && !strings.HasSuffix(f.Path, ".vtf") && !strings.HasSuffix(f.Path, ".vvc") {
-			return fmt.Errorf("write file chunk: expected non-vtf/non-vvc to not have texture flags")
+		if !debugDisableSanityChecks && f.Path != "" && e.TextureFlags != 0 && !strings.HasSuffix(f.Path, ".vtf") && !strings.HasPrefix(f.Path, "vvc/") && !strings.HasPrefix(f.Path, "vvd/") {
+			return fmt.Errorf("write file chunk: expected non-vtf/non-vvc/non-vvd to not have texture flags (set env TF2VPKDEBUG=nosanitycheck to ignore this)")
 		}
 		if !debugDisableSanityChecks && e.LoadFlags != f.Chunk[0].LoadFlags {
 			return fmt.Errorf("write file chunk: expected load flags to be the same for all chunks")
